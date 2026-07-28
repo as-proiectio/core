@@ -70,11 +70,11 @@ class TranslationCleaner:
 
     @staticmethod
     def clean_chinese_numerals(text: str) -> str:
-        """Clean Chinese character numeral leaks (e.g. 84万 -> 84만, 3亿 -> 3억)."""
+        """Clean Chinese character numeral leaks (e.g. 84万 -> 84만, 3亿 -> 3억, 18亿 -> 18억)."""
         if not text:
             return ""
-        text = re.sub(r"(\d+)\s*万", r"\1만", text)
-        text = re.sub(r"(\d+)\s*亿", r"\1억", text)
+        text = re.sub(r"([\d,.]+)\s*万", r"\1만", text)
+        text = re.sub(r"([\d,.]+)\s*亿", r"\1억", text)
         return text
 
     @staticmethod

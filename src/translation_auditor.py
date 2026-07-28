@@ -71,9 +71,10 @@ class TranslationAuditor:
             if not line_str:
                 continue
 
-            # Rule 1. Chinese numeral leaks (e.g. 84万, 3亿)
-            chinese_num_match = re.search(r"(\d+)\s*([万亿])", line_str)
+            # Rule 1. Chinese numeral leaks (e.g. 84万, 3亿, 18亿)
+            chinese_num_match = re.search(r"([\d,.]+)\s*([万亿])", line_str)
             if chinese_num_match:
+                num_str = chinese_num_match.group(1)
                 found_char = chinese_num_match.group(2)
                 repl = "만" if found_char == "万" else "억"
                 issues.append(
@@ -83,7 +84,7 @@ class TranslationAuditor:
                         "category": "chinese_numeral_leak",
                         "severity": "high",
                         "detected_text": chinese_num_match.group(0),
-                        "suggested_fix": re.sub(r"(\d+)\s*[万亿]", rf"\1{repl}", chinese_num_match.group(0)),
+                        "suggested_fix": f"{num_str}{repl}",
                         "line_snippet": line_str[:120],
                     }
                 )

@@ -17,6 +17,11 @@ class TestTranslationCleanerEnhanced(unittest.TestCase):
         cleaned = TranslationCleaner.clean_chinese_numerals(text)
         self.assertEqual(cleaned, "보유량은 84만3,775개 및 3억 달러입니다.")
 
+    def test_chinese_numerals_multi_digit(self):
+        text = "매출 18亿 달러 및 3.5亿 달러 순이익."
+        cleaned = TranslationCleaner.clean_chinese_numerals(text)
+        self.assertEqual(cleaned, "매출 18억 달러 및 3.5억 달러 순이익.")
+
     def test_malformed_korean_numbers(self):
         text = "현금 4,15억 달러 조달 및 7.5억 달러 투입."
         cleaned = TranslationCleaner.clean_malformed_korean_numbers(text)
