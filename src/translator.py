@@ -1524,6 +1524,15 @@ def run_translator(
                 f"Successfully generated final Korean premarket report at {ko_final_report}"
             )
 
+            # Audit final premarket report and log candidate issues with date in filename
+            try:
+                from translation_auditor import TranslationAuditor
+                audit_log_path = os.path.join(project_root, "logs", f"translation_audit_{today_str}.json")
+                audit_issues = TranslationAuditor.audit_file(ko_final_report, output_log_path=audit_log_path)
+                logger.info(f"Translation Audit completed. Logged {len(audit_issues)} candidate(s) to {audit_log_path}")
+            except Exception as audit_err:
+                logger.error(f"Failed to execute TranslationAuditor audit step: {audit_err}")
+
             # Trigger immediate push callback if provided
             if on_ko_report_ready:
                 try:
@@ -1584,6 +1593,15 @@ def run_translator(
             logger.info(
                 f"Successfully generated final Korean full report at {ko_final_report}"
             )
+
+            # Audit final full report and log candidate issues with date in filename
+            try:
+                from translation_auditor import TranslationAuditor
+                audit_log_path = os.path.join(project_root, "logs", f"translation_audit_{today_str}.json")
+                audit_issues = TranslationAuditor.audit_file(ko_final_report, output_log_path=audit_log_path)
+                logger.info(f"Translation Audit completed. Logged {len(audit_issues)} candidate(s) to {audit_log_path}")
+            except Exception as audit_err:
+                logger.error(f"Failed to execute TranslationAuditor audit step: {audit_err}")
 
             # Trigger immediate push callback if provided
             if on_ko_report_ready:

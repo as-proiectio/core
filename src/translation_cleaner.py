@@ -69,6 +69,44 @@ class TranslationCleaner:
         return text
 
     @staticmethod
+    def clean_chinese_numerals(text: str) -> str:
+        """Clean Chinese character numeral leaks (e.g. 84万 -> 84만, 3亿 -> 3억)."""
+        if not text:
+            return ""
+        text = re.sub(r"(\d+)\s*万", r"\1만", text)
+        text = re.sub(r"(\d+)\s*亿", r"\1억", text)
+        return text
+
+    @staticmethod
+    def clean_malformed_korean_numbers(text: str) -> str:
+        """
+        Clean malformed comma/decimal numbers in Korean units.
+        E.g. "4,15억 달러" or "4.15억 달러" -> "4억 1,500만 달러"
+        Note: Standard thousand separators like "1,198억" (3 digits after comma) are NOT modified.
+        """
+        if not text:
+            return ""
+
+        def replace_malformed_eok(match: re.Match) -> str:
+            integer_part = match.group(1)
+            decimal_part = match.group(2)
+            suffix = match.group(3) or ""
+
+            padded_dec = decimal_part.ljust(4, "0")[:4]
+            man_val = int(padded_dec)
+
+            if man_val > 0:
+                return f"{integer_part}억 {man_val:,}만{suffix}"
+            else:
+                return f"{integer_part}억{suffix}"
+
+        # Match 1 or 2 digits after dot/comma before 억 (e.g. 4,15억, 4.15억)
+        text = re.sub(
+            r"(\d+)[,\.](\d{1,2})\s*억(\s*달러|\s*원)?", replace_malformed_eok, text
+        )
+        return text
+
+    @staticmethod
     def remove_duplicates(text: str) -> str:
         """
         Clean up duplicate phrases and repeated characters at word boundaries.
@@ -84,7 +122,6 @@ class TranslationCleaner:
         text = re.sub(r"\b(\w+)(?:\s+\1)+\b", r"\1", text)
 
         # 2. Clean duplicated syllable at the end of word of length >= 3 (e.g. "완만한한" -> "완만한")
-        # Prevents matching 2-syllable valid words like "매매", "부부", "지지"
         text = re.sub(r"\b([가-힣]+)([가-힣])\2\b", r"\1\2", text)
 
         return text
@@ -95,8 +132,14 @@ class TranslationCleaner:
         if not text:
             return ""
 
+        # Clean Chinese numeral leaks
+        text = cls.clean_chinese_numerals(text)
+
         # Normalize numbers
         text = cls.normalize_numbers(text)
+
+        # Clean malformed Korean decimal numbers
+        text = cls.clean_malformed_korean_numbers(text)
 
         # Remove duplicates
         text = cls.remove_duplicates(text)
