@@ -187,6 +187,11 @@ class TranslationAuditor:
                 if pat:
                     reg_match = re.search(pat, line_str)
                     if reg_match:
+                        try:
+                            eval_fix = re.sub(pat, repl, reg_match.group(0))
+                        except Exception:
+                            eval_fix = repl
+
                         issues.append(
                             {
                                 "source": source_label,
@@ -194,7 +199,7 @@ class TranslationAuditor:
                                 "category": "custom_regex_violation",
                                 "severity": "medium",
                                 "detected_text": reg_match.group(0),
-                                "suggested_fix": repl,
+                                "suggested_fix": eval_fix,
                                 "line_snippet": line_str[:120],
                             }
                         )
