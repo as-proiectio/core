@@ -31,10 +31,13 @@ class TestTranslationCleanerEnhanced(unittest.TestCase):
         self.assertIn("<br />", cleaned)
 
 
-class TestTranslationAuditor(unittest.TestCase):
-    def test_audit_text_detects_issues(self):
+class TestTranslationAuditorSystemicRules(unittest.TestCase):
+    def test_audit_text_detects_systemic_issues(self):
         sample_text = (
             "오픈에이아이 모델이 84万3,775개 데이터를 4,15억 달러로 분석합니다.\n"
+            "캐릭터닷에이아이 및 볼츠닷에프와이아이 서비스 공시.\n"
+            "시큐리티즈(Securitize) 주가는 상승했습니다.\n"
+            "$AAPL 및 $NVDA 목표가 상향 조정함.\n"
             "바이낸스는 시장 점유율을 유지하며 순유입을 기록했습니다.\n"
             "바이낸스는 시장 점유율을 유지하며 순유입을 기록했습니다.\n"
         )
@@ -44,7 +47,10 @@ class TestTranslationAuditor(unittest.TestCase):
 
         self.assertIn("chinese_numeral_leak", categories)
         self.assertIn("malformed_number_format", categories)
-        self.assertIn("known_misspelling", categories)
+        self.assertIn("phonetic_ai_slug_anomaly", categories)
+        self.assertIn("phonetic_tld_spelling", categories)
+        self.assertIn("phonetic_suffix_transliteration", categories)
+        self.assertIn("unlocalized_ticker_leak", categories)
         self.assertIn("duplicate_sentence_leak", categories)
 
 
