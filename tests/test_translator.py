@@ -420,27 +420,24 @@ class TestMacroTranslationCache(unittest.TestCase):
 
 
 class TestPostProcessTranslationRules(unittest.TestCase):
-    def test_custom_rule_replacements(self):
+    def test_default_rule_replacements(self):
         from translator import load_translation_rules, post_process_translation
 
         rules = load_translation_rules()
-        title = "오픈에이아이 및 하이퍼스케러 전망"
-        body = "쿠리노스(Curinos)와 쿠리노스 데이터 분석에 따르면 오픈 에이아이 모델이 하이퍼 스케러 인프라에서 작동합니다."
+        title = "미국 달러화화 가치 전망 및 100 bps 상승"
+        body = "금리는 25 %p 인상되었으며 미국 달러화화 강세입니다."
 
         processed_title, processed_body = post_process_translation(
             title, body, rules, preserve_newlines=True
         )
 
-        self.assertIn("오픈AI", processed_title)
-        self.assertIn("하이퍼스케일러", processed_title)
-        self.assertNotIn("오픈에이아이", processed_title)
-        self.assertNotIn("하이퍼스케러", processed_title)
+        self.assertIn("미국 달러화", processed_title)
+        self.assertNotIn("미국 달러화화", processed_title)
+        self.assertIn("100bp", processed_title)
 
-        self.assertIn("오픈AI", processed_body)
-        self.assertIn("하이퍼스케일러", processed_body)
-        self.assertIn("큐리노스(Curinos)", processed_body)
-        self.assertIn("큐리노스", processed_body)
-        self.assertNotIn("쿠리노스", processed_body)
+        self.assertIn("미국 달러화", processed_body)
+        self.assertNotIn("미국 달러화화", processed_body)
+        self.assertIn("25%p", processed_body)
 
 
 if __name__ == "__main__":
