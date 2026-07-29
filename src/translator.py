@@ -1527,11 +1527,20 @@ def run_translator(
             # Audit final premarket report and log candidate issues with date in filename
             try:
                 from translation_auditor import TranslationAuditor
-                audit_log_path = os.path.join(project_root, "logs", f"translation_audit_{today_str}.json")
-                audit_issues = TranslationAuditor.audit_file(ko_final_report, output_log_path=audit_log_path)
-                logger.info(f"Translation Audit completed. Logged {len(audit_issues)} candidate(s) to {audit_log_path}")
+
+                audit_log_path = os.path.join(
+                    project_root, "logs", f"translation_audit_{today_str}.json"
+                )
+                audit_issues = TranslationAuditor.audit_file(
+                    ko_final_report, output_log_path=audit_log_path
+                )
+                logger.info(
+                    f"Translation Audit completed. Logged {len(audit_issues)} candidate(s) to {audit_log_path}"
+                )
             except Exception as audit_err:
-                logger.error(f"Failed to execute TranslationAuditor audit step: {audit_err}")
+                logger.error(
+                    f"Failed to execute TranslationAuditor audit step: {audit_err}"
+                )
 
             # Trigger immediate push callback if provided
             if on_ko_report_ready:
@@ -1597,11 +1606,20 @@ def run_translator(
             # Audit final full report and log candidate issues with date in filename
             try:
                 from translation_auditor import TranslationAuditor
-                audit_log_path = os.path.join(project_root, "logs", f"translation_audit_{today_str}.json")
-                audit_issues = TranslationAuditor.audit_file(ko_final_report, output_log_path=audit_log_path)
-                logger.info(f"Translation Audit completed. Logged {len(audit_issues)} candidate(s) to {audit_log_path}")
+
+                audit_log_path = os.path.join(
+                    project_root, "logs", f"translation_audit_{today_str}.json"
+                )
+                audit_issues = TranslationAuditor.audit_file(
+                    ko_final_report, output_log_path=audit_log_path
+                )
+                logger.info(
+                    f"Translation Audit completed. Logged {len(audit_issues)} candidate(s) to {audit_log_path}"
+                )
             except Exception as audit_err:
-                logger.error(f"Failed to execute TranslationAuditor audit step: {audit_err}")
+                logger.error(
+                    f"Failed to execute TranslationAuditor audit step: {audit_err}"
+                )
 
             # Trigger immediate push callback if provided
             if on_ko_report_ready:
@@ -1623,7 +1641,9 @@ def run_translator(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Alpha Signals Core Translation Pipeline")
+    parser = argparse.ArgumentParser(
+        description="Alpha Signals Core Translation Pipeline"
+    )
     parser.add_argument(
         "--type",
         choices=["full", "premarket", "incremental"],

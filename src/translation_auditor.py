@@ -45,14 +45,20 @@ class TranslationAuditor:
         regex_list = []
 
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        custom_path = os.path.join(project_root, "config", "custom_translation_rules.json")
+        custom_path = os.path.join(
+            project_root, "config", "custom_translation_rules.json"
+        )
         if os.path.exists(custom_path):
             try:
                 with open(custom_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    if "literal_replacements" in data and isinstance(data["literal_replacements"], dict):
+                    if "literal_replacements" in data and isinstance(
+                        data["literal_replacements"], dict
+                    ):
                         literal_map.update(data["literal_replacements"])
-                    if "regex_replacements" in data and isinstance(data["regex_replacements"], list):
+                    if "regex_replacements" in data and isinstance(
+                        data["regex_replacements"], list
+                    ):
                         regex_list.extend(data["regex_replacements"])
             except Exception:
                 pass
@@ -131,7 +137,10 @@ class TranslationAuditor:
                 )
 
             # Rule 4. Phonetic web domain TLD spellings (e.g. ~닷컴, ~닷고브, ~닷에프와이아이, ~닷아이오)
-            phonetic_domain_match = re.search(r"([가-힣]{2,}(?:닷컴|닷고브|닷에프와이아이|닷아이오|닷오알지))", line_str)
+            phonetic_domain_match = re.search(
+                r"([가-힣]{2,}(?:닷컴|닷고브|닷에프와이아이|닷아이오|닷오알지))",
+                line_str,
+            )
             if phonetic_domain_match:
                 issues.append(
                     {
@@ -146,7 +155,9 @@ class TranslationAuditor:
                 )
 
             # Rule 5. Phonetic proper noun suffix misspellings (e.g. 시큐리티즈(Securitize), 쿠리노스(Curinos))
-            suffix_match = re.search(r"([가-힣]+(?:리티즈|쿠리노스))\s*\(([A-Za-z]+)\)", line_str)
+            suffix_match = re.search(
+                r"([가-힣]+(?:리티즈|쿠리노스))\s*\(([A-Za-z]+)\)", line_str
+            )
             if suffix_match:
                 raw_term = suffix_match.group(1)
                 en_term = suffix_match.group(2)
@@ -224,7 +235,9 @@ class TranslationAuditor:
                 )
 
             # Rule 9. Informal sentence endings (~함, ~음, ~임)
-            if re.search(r"[가-힣](?:함|음|임)\.\s*$", line_str) and not line_str.startswith("-"):
+            if re.search(
+                r"[가-힣](?:함|음|임)\.\s*$", line_str
+            ) and not line_str.startswith("-"):
                 issues.append(
                     {
                         "source": source_label,
@@ -261,7 +274,9 @@ class TranslationAuditor:
         return issues
 
     @classmethod
-    def audit_file(cls, file_path: str, output_log_path: Optional[str] = None) -> List[Dict[str, Any]]:
+    def audit_file(
+        cls, file_path: str, output_log_path: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """
         Audits a markdown or text report file and logs any detected issues.
         """
@@ -282,8 +297,15 @@ class TranslationAuditor:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Audit Korean translation output for quality issues.")
-    parser.add_argument("--file", type=str, required=True, help="Path to translated report file to audit")
+    parser = argparse.ArgumentParser(
+        description="Audit Korean translation output for quality issues."
+    )
+    parser.add_argument(
+        "--file",
+        type=str,
+        required=True,
+        help="Path to translated report file to audit",
+    )
     parser.add_argument(
         "--output-log",
         type=str,
@@ -297,8 +319,12 @@ def main():
 
     print(f"\n📊 Audit Complete. Found {len(issues)} candidate issue(s):")
     for idx, issue in enumerate(issues, 1):
-        print(f"  [{idx}] Category: {issue['category']} (Severity: {issue['severity']})")
-        print(f"      Detected: '{issue['detected_text']}' -> Suggested Fix: '{issue['suggested_fix']}'")
+        print(
+            f"  [{idx}] Category: {issue['category']} (Severity: {issue['severity']})"
+        )
+        print(
+            f"      Detected: '{issue['detected_text']}' -> Suggested Fix: '{issue['suggested_fix']}'"
+        )
         print(f"      Snippet: {issue['line_snippet']}\n")
 
     if args.output_log:
