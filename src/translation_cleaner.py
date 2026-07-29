@@ -126,11 +126,36 @@ class TranslationCleaner:
 
         return text
 
+    @staticmethod
+    def clean_redundant_parentheses(text: str) -> str:
+        """
+        Deduplicates identical parenthetical expressions like 'xAI(xAI)' -> 'xAI'.
+        Case-insensitive match.
+        """
+        if not text:
+            return ""
+
+        def dedupe_match(match: re.Match) -> str:
+            word1 = match.group(1).strip()
+            word2 = match.group(2).strip()
+            if word1.lower() == word2.lower():
+                return word1
+            return match.group(0)
+
+        return re.sub(
+            r"([A-Za-z0-9가-힣_\.\-]+)\s*\(\s*([A-Za-z0-9가-힣_\.\-]+)\s*\)",
+            dedupe_match,
+            text,
+        )
+
     @classmethod
     def clean(cls, text: str) -> str:
         """Apply all filters sequentially to sanitize the translation."""
         if not text:
             return ""
+
+        # Deduplicate redundant identical parenthetical expressions (e.g. xAI(xAI) -> xAI)
+        text = cls.clean_redundant_parentheses(text)
 
         # Clean Chinese numeral leaks
         text = cls.clean_chinese_numerals(text)

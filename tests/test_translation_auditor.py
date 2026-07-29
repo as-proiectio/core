@@ -28,6 +28,11 @@ class TestTranslationCleanerEnhanced(unittest.TestCase):
         self.assertIn("4억 1,500만 달러", cleaned)
         self.assertIn("7억 5,000만 달러", cleaned)
 
+    def test_clean_redundant_parentheses(self):
+        text = "xAI(xAI) 인프라 구축 및 TSMC(TSMC) 실적 발표. Nvidia(Nvidia) 주가 상승."
+        cleaned = TranslationCleaner.clean_redundant_parentheses(text)
+        self.assertEqual(cleaned, "xAI 인프라 구축 및 TSMC 실적 발표. Nvidia 주가 상승.")
+
     def test_clean_full_pipeline(self):
         text = "오픈에이아이 모델이 84万3,775개 데이터를 4,15억 달러로 처리합니다.<br>반갑습니다."
         cleaned = TranslationCleaner.clean(text)

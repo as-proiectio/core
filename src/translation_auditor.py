@@ -32,6 +32,10 @@ class TranslationAuditor:
         "볼츠닷에프와이아이": "Vaults.fyi",
         "레이오프스닷에프와이아이": "Layoffs.fyi",
         "헬스케어닷고브": "Healthcare.gov",
+        "피스칼닷에이아이": "Fiscal.ai",
+        "대만반도체제조": "TSMC",
+        "대만적체전로": "TSMC",
+        "대만적층회로제조": "TSMC",
     }
 
     @classmethod
