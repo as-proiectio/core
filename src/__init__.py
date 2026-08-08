@@ -542,6 +542,7 @@ def _cleanup_data_files(data_dir: str):
             if filename in (
                 "generate_index.py",
                 "signals.json",
+                "signals_meta.json",
                 "extracted_state_pre.json",
                 "translated_state_pre.json",
                 "macro_translation_cache.json",
