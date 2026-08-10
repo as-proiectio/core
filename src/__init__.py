@@ -72,9 +72,9 @@ def trigger_git_push(file_path: str, commit_msg: str) -> bool:
             logger.warning(f"Git push skipped: .git directory not found at {git_dir}.")
             return False
 
-        # Run commands relative to resolved repository root to ensure we target the correct repo
+        # Stage all modified and new files in git_cwd to ensure a clean worktree before rebase
         subprocess.run(
-            ["git", "add", git_file_path], check=True, capture_output=True, cwd=git_cwd
+            ["git", "add", "-A"], check=True, capture_output=True, cwd=git_cwd
         )
 
         try:
