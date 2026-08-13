@@ -244,6 +244,7 @@ def call_gemini_api(
         raise ValueError("GEMINI_API_KEY environment variable is not defined.")
 
     models_to_try = [
+        "gemini-3.7-flash",
         "gemini-3.6-flash",
         "gemini-3.5-flash",
         "gemini-3.5-flash-lite",
