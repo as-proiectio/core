@@ -207,7 +207,7 @@ def pull_data_from_cloud(report_type: str = "full", target_date: str | None = No
     os.makedirs(local_dir, exist_ok=True)
     scp_command = f"scp -i {ORACLE_SSH_KEY} -o StrictHostKeyChecking=no ubuntu@{ORACLE_IP_ADDRESS}:{remote_file} {local_file}"
 
-    max_retries = 10 if report_type == "full" else 5
+    max_retries = 15
     retry_delay = 60  # seconds
 
     for attempt in range(1, max_retries + 1):
