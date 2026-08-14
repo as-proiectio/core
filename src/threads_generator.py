@@ -2,7 +2,7 @@
 Threads Content Generator module for Alpha Signals Core.
 
 Uses a single Google AI Studio Gemini API call to synthesize a viral, high-converting
-Threads thread (3-second hook root post + keyword/ticker-centric category replies + web CTA).
+Threads thread (3-second hook root post + keyword/ticker-centric category replies + dynamic web CTA).
 Includes a deterministic rule-based fallback if the API is unreachable.
 """
 
@@ -25,7 +25,7 @@ Formatting & Tone Rules:
 1. Root Post:
    - MUST feature an irresistible 3-second hook (curiosity + high user gain / key market catalysts).
    - Summarize the top 3 market drivers concisely in bullet points.
-   - End with an invitation to read the sector breakdown below (e.g. "👇 지금 시장 주도하는 10대 테마 & 핵심 종목 타래 정리").
+   - End with an invitation to read the sector breakdown below (e.g. "👇 지금 시장 주도하는 8대 테마 & 핵심 종목 타래 정리").
    - DO NOT include external URLs in the root post (avoids reach penalty).
 
 2. Thread Replies (One per category or bundled top categories, max 8-10 replies):
@@ -37,8 +37,8 @@ Formatting & Tone Rules:
      • 1줄 핵심: [가장 중요한 팩트 한 문장]
 
 3. Final CTA Reply:
-   - Provide a compelling reason to visit the web app:
-     "📊 오늘 분석된 300개 전체 기사 요약본과 종목별 타임라인 검색은 웹에서 무료로 확인하세요.\n🔗 {report_url}"
+   - Provide a compelling reason to visit the web app with the exact total articles count provided:
+     "📊 오늘 분석된 {total_articles}개 전체 기사 요약본과 종목별 타임라인 검색은 웹에서 무료로 확인하세요.\n🔗 {report_url}"
 
 Return ONLY valid JSON matching this schema:
 {
@@ -119,16 +119,17 @@ def call_gemini_for_threads(
 
 def generate_fallback_threads(
     date_str: str,
-    cio_points: List[str],
     categories_data: Dict[str, List[Dict[str, Any]]],
+    market_indices: Dict[str, str],
+    total_articles: int,
     report_url: str,
 ) -> Dict[str, Any]:
     """Deterministic fallback thread generator when LLM is unavailable."""
-    # Root Post
-    cio_summary = "\n".join([f"• {p}" for p in cio_points[:3]]) or "• 글로벌 시장 주요 지표 및 핵심 섹터 분석"
+    indices_summary = " | ".join([f"{k}: {v}" for k, v in market_indices.items() if v])
     root_post = (
         f"🚨 [{date_str} 장전 핵심 시그널]\n\n"
-        f"오늘 미 증시 3줄 핵심 요약:\n{cio_summary}\n\n"
+        f"주요 시장 지표: {indices_summary}\n\n"
+        f"오늘 시장을 움직인 주요 섹터 및 핵심 종목을 정리합니다.\n\n"
         f"👇 시장 주도 섹터 및 핵심 종목 타래 정리 🧵"
     )
 
@@ -153,9 +154,9 @@ def generate_fallback_threads(
         )
         replies.append(reply_text)
 
-    # CTA
+    # CTA with dynamic article count
     cta_reply = (
-        f"📊 오늘 분석된 300개 전체 기사 요약본과 종목별 타임라인 검색은 웹에서 무료로 확인하세요.\n"
+        f"📊 오늘 분석된 {total_articles}개 전체 기사 요약본과 종목별 타임라인 검색은 웹에서 무료로 확인하세요.\n"
         f"🔗 {report_url}"
     )
 
@@ -175,8 +176,9 @@ def generate_threads_content(
     Uses Gemini API with deterministic rule-based fallback.
     """
     date_str = structured_data.get("date", "")
-    cio_points = structured_data.get("cio_points", [])
     articles = structured_data.get("articles", [])
+    market_indices = structured_data.get("market_indices", {})
+    total_articles = structured_data.get("total_articles", len(articles))
     report_url = f"https://alphasignals.cloud/report/{date_str}"
 
     # Group articles by category
@@ -190,11 +192,11 @@ def generate_threads_content(
     # Prepare concise summary text for LLM prompt
     summary_lines = []
     summary_lines.append(f"Date: {date_str}")
-    summary_lines.append("CIO Points:")
-    for p in cio_points:
-        summary_lines.append(f"- {p}")
+    summary_lines.append(f"Total Articles Analyzed: {total_articles}")
+    if market_indices:
+        summary_lines.append("Market Indices: " + json.dumps(market_indices, ensure_ascii=False))
 
-    summary_lines.append("\nTop Categories & Sample Articles:")
+    summary_lines.append("\nTop Categories & Sample Headlines:")
     for cat_name, cat_arts in list(categories_data.items())[:10]:
         all_tickers = []
         sample_titles = []
@@ -209,10 +211,14 @@ def generate_threads_content(
             + "\n".join([f"  * {t}" for t in sample_titles])
         )
 
+    expected_cta = f"📊 오늘 분석된 {total_articles}개 전체 기사 요약본과 종목별 타임라인 검색은 웹에서 무료로 확인하세요.\n🔗 {report_url}"
+
     user_prompt = (
         f"Generate a Threads thread based on this market report:\n\n"
         + "\n".join(summary_lines)
-        + f"\n\nReport URL: {report_url}"
+        + f"\n\nTotal Articles: {total_articles}"
+        + f"\nReport URL: {report_url}"
+        + f"\nExpected CTA text format: {expected_cta}"
     )
 
     try:
@@ -222,16 +228,13 @@ def generate_threads_content(
             and "root_post" in content
             and "thread_replies" in content
         ):
-            # Ensure CTA is present
-            if "cta_reply" not in content or not content["cta_reply"]:
-                content["cta_reply"] = (
-                    f"📊 오늘 분석된 300개 전체 기사 요약본과 종목별 타임라인 검색은 웹에서 무료로 확인하세요.\n🔗 {report_url}"
-                )
+            # Ensure CTA uses dynamic total articles and correct URL
+            content["cta_reply"] = expected_cta
             logger.info("Successfully generated Threads content via Gemini API.")
             return content
     except Exception as e:
         logger.warning(f"Gemini Threads generation failed, falling back to template: {e}")
 
     return generate_fallback_threads(
-        date_str, cio_points, categories_data, report_url
+        date_str, categories_data, market_indices, total_articles, report_url
     )

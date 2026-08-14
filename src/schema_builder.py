@@ -172,9 +172,8 @@ def build_structured_report(
         with open(ko_txt_path, "r", encoding="utf-8") as f:
             ko_text = f.read()
 
-    # 2. Parse CIO Toplines & Market Indices
+    # 2. Parse Market Indices (if present in header)
     cio_source = ko_text if ko_text else en_text
-    cio_points = parse_cio_points_from_report(cio_source)
     market_indices = parse_market_indices(cio_source)
 
     # 3. Parse Articles from Markdown / Text using URL as Primary Key
@@ -253,11 +252,10 @@ def build_structured_report(
             }
         )
 
-    # 5. Build Final Document
+    # 5. Build Final Document (Pure Article & Ticker Asset)
     structured_doc = {
         "date": formatted_date,
         "type": "full",
-        "cio_points": cio_points,
         "market_indices": market_indices,
         "total_articles": len(synthesized_articles),
         "articles": synthesized_articles,

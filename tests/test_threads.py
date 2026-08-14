@@ -11,7 +11,7 @@ from src.threads_publisher import ThreadsPublisher, publish_structured_report_to
 
 def test_fallback_threads_generation():
     date_str = "2026-08-14"
-    cio_points = ["S&P 500 신기록 달성", "엔비디아 블랙웰 양산"]
+    market_indices = {"S&P 500": "7,798.99 (+1.15%)"}
     categories_data = {
         "Semiconductor": [
             {
@@ -22,13 +22,14 @@ def test_fallback_threads_generation():
     }
     report_url = "https://alphasignals.cloud/report/2026-08-14"
 
-    res = generate_fallback_threads(date_str, cio_points, categories_data, report_url)
+    res = generate_fallback_threads(date_str, categories_data, market_indices, 249, report_url)
 
     assert "root_post" in res
     assert "2026-08-14" in res["root_post"]
     assert len(res["thread_replies"]) == 1
     assert "$NVDA" in res["thread_replies"][0]
     assert "cta_reply" in res
+    assert "249개" in res["cta_reply"]
     assert report_url in res["cta_reply"]
 
 
@@ -42,7 +43,7 @@ def test_generate_threads_content_with_gemini(mock_gemini):
 
     structured_data = {
         "date": "2026-08-14",
-        "cio_points": ["미 증시 호조"],
+        "total_articles": 249,
         "articles": [
             {
                 "category": "Semiconductor",
@@ -55,6 +56,7 @@ def test_generate_threads_content_with_gemini(mock_gemini):
     res = generate_threads_content(structured_data, api_key="dummy_key")
     assert res["root_post"] == "🚨 엔비디아 실적 발표 전야 3줄 요약"
     assert len(res["thread_replies"]) == 1
+    assert "249개" in res["cta_reply"]
 
 
 def test_threads_publisher_dry_run():

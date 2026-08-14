@@ -6,22 +6,7 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.schema_builder import build_structured_report, parse_cio_points_from_report, parse_market_indices
-
-
-def test_parse_cio_points():
-    text = """### Daily Point
-_ Dow Jones 53,839.99 (-0.08%)
-_ S&P 500 7,798.99 (+1.15%)
-
-**Topline Signals**
-
-- **미국 거시경제**: 7월 PPI 보합.<br />- **엔비디아**: 차세대 블랙웰 칩 가동.
-"""
-    points = parse_cio_points_from_report(text)
-    assert len(points) == 2
-    assert "미국 거시경제" in points[0]
-    assert "엔비디아" in points[1]
+from src.schema_builder import build_structured_report, parse_market_indices, parse_markdown_articles
 
 
 def test_parse_market_indices():
@@ -37,34 +22,57 @@ _ Bitcoin 62,722.65 (-1.86%)
     assert "Bitcoin" in indices
 
 
+def test_parse_markdown_articles():
+    md = """### Daily Point
+_ Dow Jones 50,000
+
+### Semiconductor
+
+[Nvidia surges](https://example.com/nvda)<br />
+Nvidia Blackwell chips are in high demand.
+
+### Software
+
+[Microsoft expands Azure](https://example.com/msft)
+Azure revenue crosses 100B.
+"""
+    arts = parse_markdown_articles(md)
+    assert len(arts) == 2
+    assert "https://example.com/nvda" in arts
+    assert arts["https://example.com/nvda"]["category"] == "Semiconductor"
+    assert arts["https://example.com/nvda"]["title"] == "Nvidia surges"
+    assert arts["https://example.com/nvda"]["content"] == "Nvidia Blackwell chips are in high demand."
+
+
 def test_build_structured_report_flow():
     with tempfile.TemporaryDirectory() as tmp_dir:
         target_date = "20260814"
 
-        # Mock translated_state_20260814.json
-        trans_data = {
-            "https://test.com/nvda": {
-                "title": "엔비디아 블랙웰 양산 돌입",
-                "body": "Nvidia와 TSMC가 차세대 AI 칩을 양산합니다."
-            }
-        }
-        with open(os.path.join(tmp_dir, f"translated_state_{target_date}.json"), "w", encoding="utf-8") as f:
-            json.dump(trans_data, f)
+        # Mock report directory
+        report_dir = os.path.join(tmp_dir, "report")
+        os.makedirs(report_dir, exist_ok=True)
 
-        # Mock Semiconductor_sorted_20260814.json
-        cat_data = [
-            {
-                "url": "https://test.com/nvda",
-                "title": "Nvidia accelerates Blackwell",
-                "content": "Nvidia and TSMC are scaling chip production."
-            }
-        ]
-        with open(os.path.join(tmp_dir, f"Semiconductor_sorted_{target_date}.json"), "w", encoding="utf-8") as f:
-            json.dump(cat_data, f)
+        en_md = """### Daily Point
+_ S&P 500 7,700 (+1.0%)
 
-        # Mock final_report_ko_20260814.txt
-        with open(os.path.join(tmp_dir, f"final_report_ko_{target_date}.txt"), "w", encoding="utf-8") as f:
-            f.write("**Topline Signals**\n\n- **반도체**: 엔비디아 상승세 지속.")
+### Semiconductor
+
+[Nvidia Blackwell Ramp](https://test.com/nvda)<br />
+Nvidia and TSMC are scaling chip production.
+"""
+        ko_md = """### Daily Point
+_ S&P 500 7,700 (+1.0%)
+
+### 반도체
+
+[엔비디아 블랙웰 양산 돌입](https://test.com/nvda)<br />
+Nvidia와 TSMC가 차세대 AI 칩을 양산합니다.
+"""
+        with open(os.path.join(report_dir, f"alpha_signal_{target_date}.md"), "w", encoding="utf-8") as f:
+            f.write(en_md)
+
+        with open(os.path.join(report_dir, f"alpha_signal_{target_date}_ko.md"), "w", encoding="utf-8") as f:
+            f.write(ko_md)
 
         out_path = build_structured_report(report_type="full", target_date=target_date, data_dir=tmp_dir)
 
@@ -76,11 +84,13 @@ def test_build_structured_report_flow():
 
         assert res["date"] == "2026-08-14"
         assert res["type"] == "full"
-        assert len(res["cio_points"]) == 1
+        assert res["total_articles"] == 1
         assert len(res["articles"]) == 1
         art = res["articles"][0]
         assert art["category"] == "Semiconductor"
         assert "NVDA" in art["tickers"]
         assert "TSM" in art["tickers"]
+        assert art["title"] == "Nvidia Blackwell Ramp"
         assert art["title_ko"] == "엔비디아 블랙웰 양산 돌입"
+        assert art["content"] == "Nvidia and TSMC are scaling chip production."
         assert art["content_ko"] == "Nvidia와 TSMC가 차세대 AI 칩을 양산합니다."
