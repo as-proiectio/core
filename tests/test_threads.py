@@ -11,7 +11,6 @@ from src.threads_publisher import ThreadsPublisher, publish_structured_report_to
 
 def test_fallback_threads_generation():
     date_str = "2026-08-14"
-    market_indices = {"S&P 500": "7,798.99 (+1.15%)"}
     categories_data = {
         "Semiconductor": [
             {
@@ -22,7 +21,7 @@ def test_fallback_threads_generation():
     }
     report_url = "https://alphasignals.cloud/report/2026-08-14"
 
-    res = generate_fallback_threads(date_str, categories_data, market_indices, 249, report_url)
+    res = generate_fallback_threads(date_str, categories_data, 249, report_url)
 
     assert "root_post" in res
     assert "2026-08-14" in res["root_post"]

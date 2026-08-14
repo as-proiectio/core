@@ -172,11 +172,7 @@ def build_structured_report(
         with open(ko_txt_path, "r", encoding="utf-8") as f:
             ko_text = f.read()
 
-    # 2. Parse Market Indices (if present in header)
-    cio_source = ko_text if ko_text else en_text
-    market_indices = parse_market_indices(cio_source)
-
-    # 3. Parse Articles from Markdown / Text using URL as Primary Key
+    # 2. Parse Articles from Markdown / Text using URL as Primary Key
     en_articles = parse_markdown_articles(en_text)
     ko_articles = parse_markdown_articles(ko_text)
 
@@ -220,7 +216,7 @@ def build_structured_report(
             except Exception as e:
                 logger.warning(f"Error reading category file {cat_file}: {e}")
 
-    # 4. Synthesize Articles using URL matching
+    # 3. Synthesize Articles using URL matching
     synthesized_articles: List[Dict[str, Any]] = []
     all_urls = list(dict.fromkeys(list(en_articles.keys()) + list(ko_articles.keys())))
 
@@ -252,11 +248,10 @@ def build_structured_report(
             }
         )
 
-    # 5. Build Final Document (Pure Article & Ticker Asset)
+    # 4. Build Final Document (100% Pure Article & Ticker Asset)
     structured_doc = {
         "date": formatted_date,
         "type": "full",
-        "market_indices": market_indices,
         "total_articles": len(synthesized_articles),
         "articles": synthesized_articles,
     }

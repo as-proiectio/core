@@ -120,16 +120,13 @@ def call_gemini_for_threads(
 def generate_fallback_threads(
     date_str: str,
     categories_data: Dict[str, List[Dict[str, Any]]],
-    market_indices: Dict[str, str],
     total_articles: int,
     report_url: str,
 ) -> Dict[str, Any]:
     """Deterministic fallback thread generator when LLM is unavailable."""
-    indices_summary = " | ".join([f"{k}: {v}" for k, v in market_indices.items() if v])
     root_post = (
-        f"🚨 [{date_str} 장전 핵심 시그널]\n\n"
-        f"주요 시장 지표: {indices_summary}\n\n"
-        f"오늘 시장을 움직인 주요 섹터 및 핵심 종목을 정리합니다.\n\n"
+        f"🚨 [{date_str} 핵심 마켓 시그널]\n\n"
+        f"오늘 총 {total_articles}개 기사를 분석하여 시장을 움직인 주요 섹터 및 핵심 종목을 정리합니다.\n\n"
         f"👇 시장 주도 섹터 및 핵심 종목 타래 정리 🧵"
     )
 
@@ -177,7 +174,6 @@ def generate_threads_content(
     """
     date_str = structured_data.get("date", "")
     articles = structured_data.get("articles", [])
-    market_indices = structured_data.get("market_indices", {})
     total_articles = structured_data.get("total_articles", len(articles))
     report_url = f"https://alphasignals.cloud/report/{date_str}"
 
@@ -193,8 +189,6 @@ def generate_threads_content(
     summary_lines = []
     summary_lines.append(f"Date: {date_str}")
     summary_lines.append(f"Total Articles Analyzed: {total_articles}")
-    if market_indices:
-        summary_lines.append("Market Indices: " + json.dumps(market_indices, ensure_ascii=False))
 
     summary_lines.append("\nTop Categories & Sample Headlines:")
     for cat_name, cat_arts in list(categories_data.items())[:10]:
@@ -236,5 +230,5 @@ def generate_threads_content(
         logger.warning(f"Gemini Threads generation failed, falling back to template: {e}")
 
     return generate_fallback_threads(
-        date_str, categories_data, market_indices, total_articles, report_url
+        date_str, categories_data, total_articles, report_url
     )
