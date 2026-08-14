@@ -3,7 +3,8 @@ Schema Builder module for Alpha Signals Core.
 
 Synthesizes daily raw facts, categorized news, Korean translations, CIO insights,
 and Aho-Corasick extracted stock tickers into a single canonical structured JSON report.
-Saves the artifact to `data/structured/` for long-term programmatic SEO and downstream pipelines.
+Uses the unique URL as the primary key to merge English and Korean article data.
+Saves the artifact to `data/structured/signal_{YYYYMMDD}.json` (Full report only).
 """
 
 import glob
@@ -34,7 +35,7 @@ def parse_cio_points_from_report(report_text: str) -> List[str]:
         re.DOTALL,
     )
     if topline_match:
-        raw_bullets = topline_match.group(1).split("<br />")
+        raw_bullets = re.split(r"<br\s*/?>", topline_match.group(1))
         for b in raw_bullets:
             clean = re.sub(r"^[\s\-_*]+", "", b).strip()
             if clean:
@@ -79,6 +80,46 @@ def generate_article_id(url: str, index: int, date_str: str) -> str:
     return f"art_{date_str}_{url_hash}"
 
 
+def parse_markdown_articles(md_text: str) -> Dict[str, Dict[str, str]]:
+    """
+    Parses categorized markdown report into a dictionary keyed by URL.
+    Returns: { url: { 'category': str, 'title': str, 'content': str } }
+    """
+    if not md_text:
+        return {}
+
+    articles: Dict[str, Dict[str, str]] = {}
+    sections = re.split(r"\n###\s+", md_text)
+
+    for sec in sections[1:]:
+        lines = sec.split("\n")
+        cat_header = lines[0].strip()
+        if cat_header in ["Daily Point", "Weekly Schedule", "주간 일정"]:
+            continue
+
+        cat_body = "\n".join(lines[1:])
+        # Split into article blocks
+        blocks = re.split(r"(?=\[(?:.*?)\]\(https?://(?:.*?)\))", cat_body)
+        for b in blocks:
+            b = b.strip()
+            m = re.match(
+                r"^\[(.*?)\]\((https?://.*?)\)(?:\s*<br\s*/?>)?\s*(.*)", b, re.DOTALL
+            )
+            if m:
+                title = m.group(1).strip()
+                url = m.group(2).strip()
+                content = m.group(3).strip()
+                # Clean any trailing HTML breaks
+                content = re.sub(r"<br\s*/?>", "", content).strip()
+                articles[url] = {
+                    "category": cat_header,
+                    "title": title,
+                    "content": content,
+                }
+
+    return articles
+
+
 def build_structured_report(
     report_type: str = "full",
     target_date: str = None,
@@ -87,7 +128,13 @@ def build_structured_report(
     """
     Synthesizes translated articles, categories, tickers, and CIO commentary
     into data/structured/signal_{target_date}.json.
+    (Full report only).
     """
+    # Skip premarket as requested
+    if report_type != "full":
+        logger.info(f"Skipping structured JSON report for non-full report type: {report_type}")
+        return None
+
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     if data_dir is None:
         data_dir = os.path.join(project_root, "data")
@@ -96,139 +143,101 @@ def build_structured_report(
         us_tz = pytz.timezone("America/New_York")
         target_date = datetime.now(us_tz).strftime("%Y%m%d")
 
-    # Format date YYYY-MM-DD
     try:
         formatted_date = f"{target_date[:4]}-{target_date[4:6]}-{target_date[6:]}"
     except Exception:
         formatted_date = target_date
 
-    logger.info(
-        f"Building structured JSON report for {formatted_date} (Type: {report_type})..."
-    )
+    logger.info(f"Building structured JSON report for {formatted_date}...")
 
-    # 1. Load CIO report text (Prefer Korean, fallback English)
-    cio_ko_file = os.path.join(
-        data_dir,
-        (
-            f"premarket_report_ko_{target_date}.txt"
-            if report_type == "premarket"
-            else f"final_report_ko_{target_date}.txt"
-        ),
-    )
-    cio_en_file = os.path.join(
-        data_dir,
-        (
-            f"premarket_report_{target_date}.txt"
-            if report_type == "premarket"
-            else f"final_report_{target_date}.txt"
-        ),
-    )
+    # 1. Load English & Korean Reports / Text
+    en_md_path = os.path.join(data_dir, "report", f"alpha_signal_{target_date}.md")
+    ko_md_path = os.path.join(data_dir, "report", f"alpha_signal_{target_date}_ko.md")
+    en_txt_path = os.path.join(data_dir, f"final_report_{target_date}.txt")
+    ko_txt_path = os.path.join(data_dir, f"final_report_ko_{target_date}.txt")
 
-    cio_text = ""
-    if os.path.exists(cio_ko_file):
-        with open(cio_ko_file, "r", encoding="utf-8") as f:
-            cio_text = f.read()
-    elif os.path.exists(cio_en_file):
-        with open(cio_en_file, "r", encoding="utf-8") as f:
-            cio_text = f.read()
+    en_text = ""
+    if os.path.exists(en_md_path):
+        with open(en_md_path, "r", encoding="utf-8") as f:
+            en_text = f.read()
+    elif os.path.exists(en_txt_path):
+        with open(en_txt_path, "r", encoding="utf-8") as f:
+            en_text = f.read()
 
-    cio_points = parse_cio_points_from_report(cio_text)
-    market_indices = parse_market_indices(cio_text)
+    ko_text = ""
+    if os.path.exists(ko_md_path):
+        with open(ko_md_path, "r", encoding="utf-8") as f:
+            ko_text = f.read()
+    elif os.path.exists(ko_txt_path):
+        with open(ko_txt_path, "r", encoding="utf-8") as f:
+            ko_text = f.read()
 
-    # 2. Load Translated State
-    trans_file = os.path.join(
-        data_dir,
-        (
-            "translated_state_pre.json"
-            if report_type == "premarket"
-            else f"translated_state_{target_date}.json"
-        ),
-    )
-    translated_map: Dict[str, Dict[str, str]] = {}
-    if os.path.exists(trans_file):
-        try:
-            with open(trans_file, "r", encoding="utf-8") as f:
-                translated_map = json.load(f)
-        except Exception as e:
-            logger.warning(f"Failed to load translated state: {e}")
+    # 2. Parse CIO Toplines & Market Indices
+    cio_source = ko_text if ko_text else en_text
+    cio_points = parse_cio_points_from_report(cio_source)
+    market_indices = parse_market_indices(cio_source)
 
-    # 3. Load Article Categories and English Contents
-    # Collect from sorted category files: *_sorted_{target_date}.json
-    category_files = glob.glob(os.path.join(data_dir, f"*_sorted_{target_date}.json"))
-    article_by_url: Dict[str, Dict[str, Any]] = {}
+    # 3. Parse Articles from Markdown / Text using URL as Primary Key
+    en_articles = parse_markdown_articles(en_text)
+    ko_articles = parse_markdown_articles(ko_text)
 
-    for cat_file in category_files:
-        cat_name = (
-            os.path.basename(cat_file)
-            .replace(f"_sorted_{target_date}.json", "")
-            .replace("_", " ")
-        )
-        try:
-            with open(cat_file, "r", encoding="utf-8") as f:
-                items = json.load(f)
-            if isinstance(items, list):
-                for item in items:
-                    url = item.get("url", "").strip()
-                    if url:
-                        article_by_url[url] = {
-                            "category": cat_name,
-                            "title": item.get("title", "").strip(),
-                            "content": item.get("content", "").strip(),
-                            "url": url,
-                        }
-        except Exception as e:
-            logger.warning(f"Error reading category file {cat_file}: {e}")
-
-    # Fallback to daily_news_*.json if sorted files are empty
-    if not article_by_url:
-        daily_news_file = os.path.join(
-            data_dir,
-            (
-                f"premarket_news_{target_date}.json"
-                if report_type == "premarket"
-                else f"daily_news_{target_date}.json"
-            ),
-        )
-        if os.path.exists(daily_news_file):
+    # Fallback to translated_state_{target_date}.json if ko_articles empty
+    if not ko_articles:
+        trans_file = os.path.join(data_dir, f"translated_state_{target_date}.json")
+        if os.path.exists(trans_file):
             try:
-                with open(daily_news_file, "r", encoding="utf-8") as f:
-                    news_data = json.load(f)
-                news_list = (
-                    news_data.get("news", [])
-                    if isinstance(news_data, dict)
-                    else news_data
-                )
-                for item in news_list:
-                    url = item.get("url", "").strip()
-                    if url:
-                        article_by_url[url] = {
-                            "category": item.get("category", "General"),
-                            "title": item.get("title", "").strip(),
-                            "content": item.get("content", "").strip(),
-                            "url": url,
-                        }
+                with open(trans_file, "r", encoding="utf-8") as f:
+                    trans_map = json.load(f)
+                for url, val in trans_map.items():
+                    ko_articles[url] = {
+                        "category": "",
+                        "title": val.get("title", ""),
+                        "content": val.get("body", ""),
+                    }
             except Exception as e:
-                logger.warning(f"Error reading daily news file: {e}")
+                logger.warning(f"Failed to read fallback translated_state: {e}")
 
-    # 4. Synthesize Articles
-    # If translated_map exists, iterate translated items for highest accuracy
-    synthesized_articles = []
-    seen_urls = set()
+    # Fallback to sorted category JSON files if en_articles empty
+    if not en_articles:
+        category_files = glob.glob(os.path.join(data_dir, f"*_sorted_{target_date}.json"))
+        for cat_file in category_files:
+            cat_name = (
+                os.path.basename(cat_file)
+                .replace(f"_sorted_{target_date}.json", "")
+                .replace("_", " ")
+            )
+            try:
+                with open(cat_file, "r", encoding="utf-8") as f:
+                    items = json.load(f)
+                if isinstance(items, list):
+                    for item in items:
+                        url = item.get("url", "").strip()
+                        if url:
+                            en_articles[url] = {
+                                "category": cat_name,
+                                "title": item.get("title", "").strip(),
+                                "content": item.get("content", "").strip(),
+                            }
+            except Exception as e:
+                logger.warning(f"Error reading category file {cat_file}: {e}")
 
-    # Priority 1: Translated articles
-    for idx, (url, trans_item) in enumerate(translated_map.items()):
-        seen_urls.add(url)
-        orig_item = article_by_url.get(url, {})
-        cat = orig_item.get("category", "General")
-        title_en = orig_item.get("title", "")
-        content_en = orig_item.get("content", "")
+    # 4. Synthesize Articles using URL matching
+    synthesized_articles: List[Dict[str, Any]] = []
+    all_urls = list(dict.fromkeys(list(en_articles.keys()) + list(ko_articles.keys())))
 
-        title_ko = trans_item.get("title", "").strip()
-        content_ko = trans_item.get("body", "").strip()
+    for idx, url in enumerate(all_urls):
+        en_item = en_articles.get(url, {})
+        ko_item = ko_articles.get(url, {})
 
-        # Extract tickers with Aho-Corasick on all available text fields
-        full_search_text = f"{title_en} {title_ko} {content_en} {content_ko}"
-        tickers = extract_tickers_from_text(full_search_text)
+        cat = en_item.get("category") or ko_item.get("category") or "General"
+        title_en = en_item.get("title", "")
+        content_en = en_item.get("content", "")
+        title_ko = ko_item.get("title", "")
+        content_ko = ko_item.get("content", "")
+
+        # Extract tickers with Aho-Corasick across all text fields
+        full_text = f"{title_en} {title_ko} {content_en} {content_ko}"
+        tickers = extract_tickers_from_text(full_text)
 
         art_id = generate_article_id(url, idx, target_date)
         synthesized_articles.append(
@@ -237,32 +246,9 @@ def build_structured_report(
                 "category": cat,
                 "tickers": tickers,
                 "title": title_en or title_ko,
-                "title_ko": title_ko,
+                "title_ko": title_ko or title_en,
                 "content": content_en,
                 "content_ko": content_ko,
-                "url": url,
-            }
-        )
-
-    # Priority 2: Any remaining articles in article_by_url (if not translated)
-    for url, orig_item in article_by_url.items():
-        if url in seen_urls:
-            continue
-        seen_urls.add(url)
-        title_en = orig_item.get("title", "").strip()
-        content_en = orig_item.get("content", "").strip()
-        cat = orig_item.get("category", "General")
-        tickers = extract_tickers_from_text(f"{title_en} {content_en}")
-        art_id = generate_article_id(url, len(synthesized_articles), target_date)
-        synthesized_articles.append(
-            {
-                "id": art_id,
-                "category": cat,
-                "tickers": tickers,
-                "title": title_en,
-                "title_ko": "",
-                "content": content_en,
-                "content_ko": "",
                 "url": url,
             }
         )
@@ -270,7 +256,7 @@ def build_structured_report(
     # 5. Build Final Document
     structured_doc = {
         "date": formatted_date,
-        "type": report_type,
+        "type": "full",
         "cio_points": cio_points,
         "market_indices": market_indices,
         "total_articles": len(synthesized_articles),
@@ -280,13 +266,7 @@ def build_structured_report(
     # 6. Save to data/structured/
     structured_dir = os.path.join(data_dir, "structured")
     os.makedirs(structured_dir, exist_ok=True)
-
-    out_filename = (
-        f"signal_premarket_{target_date}.json"
-        if report_type == "premarket"
-        else f"signal_{target_date}.json"
-    )
-    out_filepath = os.path.join(structured_dir, out_filename)
+    out_filepath = os.path.join(structured_dir, f"signal_{target_date}.json")
 
     with open(out_filepath, "w", encoding="utf-8") as f:
         json.dump(structured_doc, f, ensure_ascii=False, indent=2)
