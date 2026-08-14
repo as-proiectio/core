@@ -29,6 +29,7 @@ from shared.env_utils import load_env_file
 from shared.shared_logger import setup_logger
 from sorter import run_sorter
 from translator import run_translator
+from schema_builder import build_structured_report
 
 # Populate os.environ with local config prior to bootstrapping dependencies.
 load_env_file()
@@ -72,9 +73,9 @@ def trigger_git_push(file_path: str, commit_msg: str) -> bool:
             logger.warning(f"Git push skipped: .git directory not found at {git_dir}.")
             return False
 
-        # Stage all modified and new files in git_cwd to ensure a clean worktree before rebase
+        # Stage target file in git_cwd
         subprocess.run(
-            ["git", "add", "-A"], check=True, capture_output=True, cwd=git_cwd
+            ["git", "add", git_file_path], check=True, capture_output=True, cwd=git_cwd
         )
 
         try:
@@ -501,6 +502,20 @@ def run_all(report_type: str = "full"):
                         )
             except Exception as e:
                 logger.error(f"Translator failed: {e}")
+
+            # Build and push canonical structured JSON report
+            try:
+                structured_file = build_structured_report(
+                    report_type=report_type,
+                    target_date=today_str,
+                    data_dir=data_dir,
+                )
+                if structured_file and os.path.exists(structured_file):
+                    rel_struct_file = os.path.relpath(structured_file, project_root)
+                    commit_msg_struct = f"feat(data): publish structured signal JSON ({report_type}) {today_str}"
+                    trigger_git_push(rel_struct_file, commit_msg_struct)
+            except Exception as struct_err:
+                logger.error(f"Failed to build structured JSON report: {struct_err}")
 
             if report_type == "premarket":
                 logger.info(
