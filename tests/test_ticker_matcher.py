@@ -1,10 +1,9 @@
 import os
 import sys
-import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.ticker_matcher import TickerMatcher, extract_tickers_from_text
+from src.ticker_matcher import extract_tickers_from_text
 
 
 def test_basic_ticker_extraction():

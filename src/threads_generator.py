@@ -208,7 +208,7 @@ def generate_threads_content(
     expected_cta = f"📊 오늘 분석된 {total_articles}개 전체 기사 요약본과 종목별 타임라인 검색은 웹에서 무료로 확인하세요.\n🔗 {report_url}"
 
     user_prompt = (
-        f"Generate a Threads thread based on this market report:\n\n"
+        "Generate a Threads thread based on this market report:\n\n"
         + "\n".join(summary_lines)
         + f"\n\nTotal Articles: {total_articles}"
         + f"\nReport URL: {report_url}"

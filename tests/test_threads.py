@@ -1,12 +1,11 @@
 import os
 import sys
 from unittest.mock import MagicMock, patch
-import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.threads_generator import generate_fallback_threads, generate_threads_content
-from src.threads_publisher import ThreadsPublisher, publish_structured_report_to_threads
+from src.threads_publisher import ThreadsPublisher
 
 
 def test_fallback_threads_generation():

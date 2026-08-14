@@ -8,7 +8,7 @@ Requires zero external LLM API calls (0 cost, ultra-fast matching).
 
 from collections import deque
 import re
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set
 
 
 class AhoCorasick:
