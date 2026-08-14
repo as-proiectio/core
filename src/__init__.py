@@ -516,15 +516,22 @@ def run_all(report_type: str = "full"):
                     trigger_git_push(rel_struct_file, commit_msg_struct)
 
                     # Trigger automated Threads publishing (if enabled)
-                    enable_threads = os.getenv("ENABLE_THREADS_POST", "false").lower() == "true"
+                    enable_threads = (
+                        os.getenv("ENABLE_THREADS_POST", "false").lower() == "true"
+                    )
                     if enable_threads:
                         try:
-                            from threads_publisher import publish_structured_report_to_threads
+                            from threads_publisher import (
+                                publish_structured_report_to_threads,
+                            )
+
                             with open(structured_file, "r", encoding="utf-8") as f:
                                 struct_data = json.load(f)
                             publish_structured_report_to_threads(struct_data)
                         except Exception as thread_err:
-                            logger.error(f"Threads automated publishing failed: {thread_err}")
+                            logger.error(
+                                f"Threads automated publishing failed: {thread_err}"
+                            )
             except Exception as struct_err:
                 logger.error(f"Failed to build structured JSON report: {struct_err}")
 

@@ -122,8 +122,8 @@ def parse_markdown_articles(md_text: str) -> Dict[str, Dict[str, str]]:
 
 def build_structured_report(
     report_type: str = "full",
-    target_date: str = None,
-    data_dir: str = None,
+    target_date: Optional[str] = None,
+    data_dir: Optional[str] = None,
 ) -> Optional[str]:
     """
     Synthesizes translated articles, categories, tickers, and CIO commentary
@@ -132,7 +132,9 @@ def build_structured_report(
     """
     # Skip premarket as requested
     if report_type != "full":
-        logger.info(f"Skipping structured JSON report for non-full report type: {report_type}")
+        logger.info(
+            f"Skipping structured JSON report for non-full report type: {report_type}"
+        )
         return None
 
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -194,7 +196,9 @@ def build_structured_report(
 
     # Fallback to sorted category JSON files if en_articles empty
     if not en_articles:
-        category_files = glob.glob(os.path.join(data_dir, f"*_sorted_{target_date}.json"))
+        category_files = glob.glob(
+            os.path.join(data_dir, f"*_sorted_{target_date}.json")
+        )
         for cat_file in category_files:
             cat_name = (
                 os.path.basename(cat_file)

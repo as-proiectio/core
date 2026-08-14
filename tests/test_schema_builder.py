@@ -5,7 +5,11 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.schema_builder import build_structured_report, parse_market_indices, parse_markdown_articles
+from src.schema_builder import (
+    build_structured_report,
+    parse_market_indices,
+    parse_markdown_articles,
+)
 
 
 def test_parse_market_indices():
@@ -40,7 +44,10 @@ Azure revenue crosses 100B.
     assert "https://example.com/nvda" in arts
     assert arts["https://example.com/nvda"]["category"] == "Semiconductor"
     assert arts["https://example.com/nvda"]["title"] == "Nvidia surges"
-    assert arts["https://example.com/nvda"]["content"] == "Nvidia Blackwell chips are in high demand."
+    assert (
+        arts["https://example.com/nvda"]["content"]
+        == "Nvidia Blackwell chips are in high demand."
+    )
 
 
 def test_build_structured_report_flow():
@@ -67,13 +74,23 @@ _ S&P 500 7,700 (+1.0%)
 [엔비디아 블랙웰 양산 돌입](https://test.com/nvda)<br />
 Nvidia와 TSMC가 차세대 AI 칩을 양산합니다.
 """
-        with open(os.path.join(report_dir, f"alpha_signal_{target_date}.md"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(report_dir, f"alpha_signal_{target_date}.md"),
+            "w",
+            encoding="utf-8",
+        ) as f:
             f.write(en_md)
 
-        with open(os.path.join(report_dir, f"alpha_signal_{target_date}_ko.md"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(report_dir, f"alpha_signal_{target_date}_ko.md"),
+            "w",
+            encoding="utf-8",
+        ) as f:
             f.write(ko_md)
 
-        out_path = build_structured_report(report_type="full", target_date=target_date, data_dir=tmp_dir)
+        out_path = build_structured_report(
+            report_type="full", target_date=target_date, data_dir=tmp_dir
+        )
 
         assert out_path is not None
         assert os.path.exists(out_path)

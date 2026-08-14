@@ -7,7 +7,9 @@ from src.ticker_matcher import extract_tickers_from_text
 
 
 def test_basic_ticker_extraction():
-    text = "엔비디아(Nvidia)는 블랙웰 AI 칩 양산에 돌입했으며, TSMC($TSM)와 협력 중입니다."
+    text = (
+        "엔비디아(Nvidia)는 블랙웰 AI 칩 양산에 돌입했으며, TSMC($TSM)와 협력 중입니다."
+    )
     tickers = extract_tickers_from_text(text)
     assert "NVDA" in tickers
     assert "TSM" in tickers

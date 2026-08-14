@@ -36,7 +36,7 @@ def test_generate_threads_content_with_gemini(mock_gemini):
     mock_gemini.return_value = {
         "root_post": "🚨 엔비디아 실적 발표 전야 3줄 요약",
         "thread_replies": ["(1/10) 🔹 [반도체] $NVDA"],
-        "cta_reply": "웹에서 확인하세요: https://alphasignals.cloud"
+        "cta_reply": "웹에서 확인하세요: https://alphasignals.cloud",
     }
 
     structured_data = {
@@ -46,9 +46,9 @@ def test_generate_threads_content_with_gemini(mock_gemini):
             {
                 "category": "Semiconductor",
                 "title_ko": "엔비디아 상승",
-                "tickers": ["NVDA"]
+                "tickers": ["NVDA"],
             }
-        ]
+        ],
     }
 
     res = generate_threads_content(structured_data, api_key="dummy_key")
@@ -74,20 +74,17 @@ def test_threads_publisher_dry_run():
 @patch("requests.post")
 def test_threads_publisher_live_mock(mock_post):
     mock_post.return_value = MagicMock(
-        status_code=200,
-        json=lambda: {"id": "123456789"}
+        status_code=200, json=lambda: {"id": "123456789"}
     )
 
     with patch.dict(os.environ, {"ENABLE_THREADS_POST": "true"}):
         publisher = ThreadsPublisher(
-            user_id="user_123",
-            access_token="token_abc",
-            dry_run=False
+            user_id="user_123", access_token="token_abc", dry_run=False
         )
         thread_data = {
             "root_post": "Root post",
             "thread_replies": ["Reply 1"],
-            "cta_reply": "CTA post"
+            "cta_reply": "CTA post",
         }
         published_ids = publisher.publish_thread(thread_data)
         assert len(published_ids) == 3

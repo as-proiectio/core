@@ -8,7 +8,7 @@ Requires zero external LLM API calls (0 cost, ultra-fast matching).
 
 from collections import deque
 import re
-from typing import Dict, List, Set
+from typing import Dict, List, Optional, Set
 
 
 class AhoCorasick:
@@ -167,14 +167,31 @@ DEFAULT_TICKER_MAP: Dict[str, List[str]] = {
 
 # Ambiguous short tickers that must have strict boundary or $ prefix
 AMBIGUOUS_TICKERS = {
-    "A", "AI", "ON", "IT", "BE", "CAN", "ALL", "NOW", "SO", "CAT", "DE", "C", "V", "MS", "GS", "BA", "SQ", "GE"
+    "A",
+    "AI",
+    "ON",
+    "IT",
+    "BE",
+    "CAN",
+    "ALL",
+    "NOW",
+    "SO",
+    "CAT",
+    "DE",
+    "C",
+    "V",
+    "MS",
+    "GS",
+    "BA",
+    "SQ",
+    "GE",
 }
 
 
 class TickerMatcher:
     """High-speed Ticker Extraction engine."""
 
-    def __init__(self, ticker_map: Dict[str, List[str]] = None):
+    def __init__(self, ticker_map: Optional[Dict[str, List[str]]] = None):
         self.ticker_map = ticker_map or DEFAULT_TICKER_MAP
         self.automaton = AhoCorasick()
         self._init_automaton()
@@ -218,7 +235,9 @@ class TickerMatcher:
                     pattern = rf"(?:\$|\b){re.escape(ticker)}\b"
                     # Also check Korean alias match
                     aliases = self.ticker_map.get(ticker, [])
-                    ko_aliases = [a for a in aliases if re.search(r"[\uac00-\ud7a3]", a)]
+                    ko_aliases = [
+                        a for a in aliases if re.search(r"[\uac00-\ud7a3]", a)
+                    ]
                     has_ko_match = any(ko in text for ko in ko_aliases)
                     if re.search(pattern, text) or has_ko_match:
                         matched_tickers.add(ticker)

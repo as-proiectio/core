@@ -41,13 +41,13 @@ class ThreadsPublisher:
         self,
         text: str,
         reply_to_id: Optional[str] = None,
-    ) -> Optional[str]:
+    ) -> str:
         """Creates a media container for a text post."""
         if self.dry_run:
             logger.info(
                 f"[Dry-Run] Creating container | ReplyTo: {reply_to_id} | Text: {text[:60]}..."
             )
-            return f"mock_container_{int(time.time()*1000)}"
+            return f"mock_container_{int(time.time() * 1000)}"
 
         url = f"{THREADS_GRAPH_BASE_URL}/{self.user_id}/threads"
         payload = {
@@ -63,13 +63,15 @@ class ThreadsPublisher:
             resp.raise_for_status()
             data = resp.json()
             container_id = data.get("id")
+            if not container_id:
+                raise ValueError(f"No container ID in response: {data}")
             logger.info(f"Created container {container_id}")
-            return container_id
+            return str(container_id)
         except Exception as e:
             logger.error(f"Failed to create Threads container: {e}")
             raise
 
-    def publish_container(self, creation_id: str) -> Optional[str]:
+    def publish_container(self, creation_id: str) -> str:
         """Publishes an existing media container."""
         if self.dry_run:
             logger.info(f"[Dry-Run] Publishing container: {creation_id}")
@@ -86,8 +88,10 @@ class ThreadsPublisher:
             resp.raise_for_status()
             data = resp.json()
             published_id = data.get("id")
+            if not published_id:
+                raise ValueError(f"No published ID in response: {data}")
             logger.info(f"Published thread item {published_id}")
-            return published_id
+            return str(published_id)
         except Exception as e:
             logger.error(f"Failed to publish Threads container {creation_id}: {e}")
             raise

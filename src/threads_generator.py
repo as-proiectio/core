@@ -139,10 +139,16 @@ def generate_fallback_threads(
         for art in articles:
             tickers.extend(art.get("tickers", []))
         tickers_unique = sorted(list(set(tickers)))[:4]
-        ticker_str = ", ".join([f"${t}" for t in tickers_unique]) if tickers_unique else "관련 주요 종목"
+        ticker_str = (
+            ", ".join([f"${t}" for t in tickers_unique])
+            if tickers_unique
+            else "관련 주요 종목"
+        )
 
         top_art = articles[0] if articles else {}
-        top_title = top_art.get("title_ko") or top_art.get("title") or "섹터 주요 동향 분석"
+        top_title = (
+            top_art.get("title_ko") or top_art.get("title") or "섹터 주요 동향 분석"
+        )
 
         reply_text = (
             f"({idx}/{len(cat_items)}) 🔹 [{cat_name}]\n"
@@ -227,7 +233,9 @@ def generate_threads_content(
             logger.info("Successfully generated Threads content via Gemini API.")
             return content
     except Exception as e:
-        logger.warning(f"Gemini Threads generation failed, falling back to template: {e}")
+        logger.warning(
+            f"Gemini Threads generation failed, falling back to template: {e}"
+        )
 
     return generate_fallback_threads(
         date_str, categories_data, total_articles, report_url
