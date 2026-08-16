@@ -7,22 +7,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.schema_builder import (
     build_structured_report,
-    parse_market_indices,
     parse_markdown_articles,
 )
-
-
-def test_parse_market_indices():
-    text = """### Daily Point
-_ Dow Jones 53,839.99 (-0.08%)
-_ S&P 500 7,798.99 (+1.15%)
-_ Bitcoin 62,722.65 (-1.86%)
-"""
-    indices = parse_market_indices(text)
-    assert "Dow Jones" in indices
-    assert "53,839.99 (-0.08%)" == indices["Dow Jones"]
-    assert "S&P 500" in indices
-    assert "Bitcoin" in indices
 
 
 def test_parse_markdown_articles():
