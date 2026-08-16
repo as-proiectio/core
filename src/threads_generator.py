@@ -181,7 +181,7 @@ def generate_threads_content(
     date_str = structured_data.get("date", "")
     articles = structured_data.get("articles", [])
     total_articles = structured_data.get("total_articles", len(articles))
-    report_url = f"https://alphasignals.cloud/report/{date_str}"
+    report_url = "https://alphasignals.cloud"
 
     # Group articles by category
     categories_data: Dict[str, List[Dict[str, Any]]] = {}

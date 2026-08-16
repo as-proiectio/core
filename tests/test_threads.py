@@ -18,7 +18,7 @@ def test_fallback_threads_generation():
             }
         ]
     }
-    report_url = "https://alphasignals.cloud/report/2026-08-14"
+    report_url = "https://alphasignals.cloud"
 
     res = generate_fallback_threads(date_str, categories_data, 249, report_url)
 
