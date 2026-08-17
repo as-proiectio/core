@@ -40,6 +40,11 @@ Formatting & Tone Rules:
    - Provide a compelling reason to visit the web app with the exact total articles count provided:
      "📊 오늘 분석된 {total_articles}개 전체 기사 요약본과 종목별 타임라인 검색은 웹에서 무료로 확인하세요.\n🔗 {report_url}"
 
+4. Hashtag & Topic Restrictions:
+   - NEVER create artificial compound hashtags or micro-topic tags (e.g. #LG엔비디아, #종목합성태그).
+   - Do NOT include unnecessary hashtags in the body. Use ONLY standard ticker symbols with dollar signs (e.g. $NVDA, $AAPL, $TSLA).
+   - Keep the text clean, scannable, and avoid creating obscure Threads topics/communities that harm reach.
+
 Return ONLY valid JSON matching this schema:
 {
   "root_post": "string",
