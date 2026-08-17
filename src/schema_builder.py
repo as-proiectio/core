@@ -17,7 +17,11 @@ from typing import Any, Dict, List, Optional
 import pytz
 
 from shared.shared_logger import setup_logger
-from src.ticker_matcher import extract_tickers_from_text
+
+try:
+    from ticker_matcher import extract_tickers_from_text
+except ImportError:
+    from src.ticker_matcher import extract_tickers_from_text
 
 logger = setup_logger("logs/schema_builder.log", __name__)
 

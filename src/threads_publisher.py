@@ -154,7 +154,10 @@ def publish_structured_report_to_threads(
     dry_run: bool = False,
 ) -> List[str]:
     """Convenience function to generate and publish Threads thread from structured JSON."""
-    from src.threads_generator import generate_threads_content
+    try:
+        from threads_generator import generate_threads_content
+    except ImportError:
+        from src.threads_generator import generate_threads_content
 
     thread_content = generate_threads_content(structured_data)
     publisher = ThreadsPublisher(dry_run=dry_run)
