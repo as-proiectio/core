@@ -17,6 +17,7 @@ from shared.shared_logger import setup_logger
 load_env_file()
 logger = setup_logger("logs/threads_publisher.log", __name__)
 
+
 def _update_env_token(new_token: str) -> None:
     """Updates THREADS_ACCESS_TOKEN in core/.env file if it exists."""
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
