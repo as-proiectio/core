@@ -17,6 +17,65 @@ from shared.shared_logger import setup_logger
 load_env_file()
 logger = setup_logger("logs/threads_publisher.log", __name__)
 
+def _update_env_token(new_token: str) -> None:
+    """Updates THREADS_ACCESS_TOKEN in core/.env file if it exists."""
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env_path = os.path.join(project_root, ".env")
+    if not os.path.exists(env_path):
+        return
+
+    try:
+        with open(env_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        lines = content.split("\n")
+        new_lines = []
+        found = False
+        for line in lines:
+            if line.startswith("THREADS_ACCESS_TOKEN="):
+                new_lines.append(f"THREADS_ACCESS_TOKEN={new_token}")
+                found = True
+            else:
+                new_lines.append(line)
+        if not found:
+            new_lines.append(f"THREADS_ACCESS_TOKEN={new_token}")
+
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(new_lines).strip() + "\n")
+        logger.info("Updated core/.env with refreshed THREADS_ACCESS_TOKEN.")
+    except Exception as e:
+        logger.warning(f"Failed to persist refreshed token to .env: {e}")
+
+
+def refresh_long_lived_token(access_token: str) -> Optional[str]:
+    """
+    Refreshes a valid long-lived Threads access token to extend its expiration by another 60 days.
+    (Meta allows refreshing if token is at least 24 hours old).
+    """
+    if not access_token:
+        return None
+
+    url = f"https://graph.threads.net/refresh_access_token?grant_type=th_refresh_token&access_token={access_token}"
+    try:
+        resp = requests.get(url, timeout=20)
+        if resp.ok:
+            data = resp.json()
+            new_token = data.get("access_token")
+            if new_token:
+                logger.info(
+                    "Successfully refreshed Threads long-lived access token (extended +60 days)."
+                )
+                _update_env_token(new_token)
+                return new_token
+        else:
+            logger.debug(
+                f"Threads token refresh skipped ({resp.status_code}): {resp.text}"
+            )
+    except Exception as e:
+        logger.debug(f"Threads token refresh check skipped: {e}")
+    return None
+
+
 THREADS_GRAPH_BASE_URL = "https://graph.threads.net/v1.0"
 
 
@@ -36,6 +95,12 @@ class ThreadsPublisher:
             or os.environ.get("ENABLE_THREADS_POST", "false").lower() != "true"
             or not (self.user_id and self.access_token)
         )
+
+        # Attempt auto-refresh to continuously maintain 60-day validity
+        if not self.dry_run and self.access_token:
+            refreshed = refresh_long_lived_token(self.access_token)
+            if refreshed:
+                self.access_token = refreshed
 
     def create_text_container(
         self,
