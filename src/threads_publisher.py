@@ -60,6 +60,10 @@ class ThreadsPublisher:
 
         try:
             resp = requests.post(url, data=payload, timeout=30)
+            if not resp.ok:
+                logger.error(
+                    f"Threads container creation failed ({resp.status_code}): {resp.text}"
+                )
             resp.raise_for_status()
             data = resp.json()
             container_id = data.get("id")
@@ -85,6 +89,10 @@ class ThreadsPublisher:
 
         try:
             resp = requests.post(url, data=payload, timeout=30)
+            if not resp.ok:
+                logger.error(
+                    f"Threads publish failed ({resp.status_code}): {resp.text}"
+                )
             resp.raise_for_status()
             data = resp.json()
             published_id = data.get("id")
