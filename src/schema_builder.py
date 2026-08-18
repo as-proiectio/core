@@ -206,11 +206,27 @@ def build_structured_report(
             }
         )
 
+    # Read raw crawled articles count from daily_news if available
+    raw_crawled_count = None
+    raw_news_file = os.path.join(data_dir, f"daily_news_{target_date}.json")
+    if os.path.exists(raw_news_file):
+        try:
+            with open(raw_news_file, "r", encoding="utf-8") as f:
+                raw_d = json.load(f)
+                raw_crawled_count = (
+                    len(raw_d)
+                    if isinstance(raw_d, list)
+                    else len(raw_d.get("articles", []))
+                )
+        except Exception:
+            pass
+
     # 4. Save Canonical Document (100% Pure Article & Ticker Asset)
     structured_doc = {
         "date": formatted_date,
         "type": "full",
         "total_articles": len(synthesized_articles),
+        "raw_crawled_count": raw_crawled_count or len(synthesized_articles),
         "articles": synthesized_articles,
     }
 
