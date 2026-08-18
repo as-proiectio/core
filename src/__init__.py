@@ -16,6 +16,7 @@ import subprocess
 import sys
 import time
 from datetime import datetime, timedelta
+from typing import List, Union
 
 # Add project root to sys.path to allow importing from 'shared' and local modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -37,9 +38,10 @@ load_env_file()
 logger = setup_logger(logger_name=__name__)
 
 
-def trigger_git_push(file_path: str, commit_msg: str) -> bool:
+def trigger_git_push(file_path: Union[str, List[str]], commit_msg: str) -> bool:
     """
     Automatically commits and pushes the formatted report to the git data repository.
+    Supports single file path or list of file paths for atomic multi-file commits.
     Safe exception wrapping ensures network/SSH failures do not interrupt core pipeline.
     """
     enable_push = os.getenv("ENABLE_GIT_PUSH", "false")
@@ -48,23 +50,24 @@ def trigger_git_push(file_path: str, commit_msg: str) -> bool:
         return False
 
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-    # Check if the target file is inside the 'data' directory which is a separate repository
-    abs_file_path = os.path.abspath(os.path.join(project_root, file_path))
     data_dir = os.path.join(project_root, "data")
 
-    if abs_file_path.startswith(os.path.abspath(data_dir)) and os.path.exists(
+    files = [file_path] if isinstance(file_path, str) else file_path
+    if not files:
+        return False
+
+    # Check if target files are inside the 'data' directory
+    first_abs = os.path.abspath(os.path.join(project_root, files[0]))
+    if first_abs.startswith(os.path.abspath(data_dir)) and os.path.exists(
         os.path.join(data_dir, ".git")
     ):
         git_cwd = data_dir
-        git_file_path = os.path.relpath(abs_file_path, data_dir)
         git_dir = os.path.join(data_dir, ".git")
         logger.info(
-            f"Target file is inside sub-repository 'data'. Operating git from 'data' directory (path: {git_file_path})."
+            f"Target files are inside sub-repository 'data'. Operating git from 'data' directory."
         )
     else:
         git_cwd = project_root
-        git_file_path = file_path
         git_dir = os.path.join(project_root, ".git")
 
     try:
@@ -73,10 +76,16 @@ def trigger_git_push(file_path: str, commit_msg: str) -> bool:
             logger.warning(f"Git push skipped: .git directory not found at {git_dir}.")
             return False
 
-        # Stage target file in git_cwd
-        subprocess.run(
-            ["git", "add", git_file_path], check=True, capture_output=True, cwd=git_cwd
-        )
+        # Stage target file(s) in git_cwd
+        for fp in files:
+            abs_fp = os.path.abspath(os.path.join(project_root, fp))
+            if git_cwd == data_dir:
+                rel_fp = os.path.relpath(abs_fp, data_dir)
+            else:
+                rel_fp = fp
+            subprocess.run(
+                ["git", "add", rel_fp], check=True, capture_output=True, cwd=git_cwd
+            )
 
         try:
             subprocess.run(
@@ -449,91 +458,68 @@ def run_all(report_type: str = "full"):
 
             logger.info("Running Translator for Korean report...")
             try:
-                ko_pushed = False
-
-                def on_ko_ready(ko_file_path: str):
-                    nonlocal ko_pushed
-                    if os.path.exists(ko_file_path):
-                        rel_out_file_ko = os.path.relpath(ko_file_path, project_root)
-                        if report_type == "premarket":
-                            commit_msg_ko = (
-                                f"feat(data): publish premarket signal (KO) {today_str}"
-                            )
-                        else:
-                            commit_msg_ko = (
-                                f"feat(data): publish alpha signal (KO) {today_str}"
-                            )
-                        trigger_git_push(rel_out_file_ko, commit_msg_ko)
-                        ko_pushed = True
-                    else:
-                        logger.warning(
-                            f"Korean report file not found at {ko_file_path}, skipping immediate Git push."
-                        )
-
-                run_translator(
-                    report_type, target_date=today_str, on_ko_report_ready=on_ko_ready
-                )
-
-                # Fallback push check if callback wasn't executed
-                if not ko_pushed:
-                    if report_type == "premarket":
-                        out_file_ko = os.path.join(
-                            data_dir,
-                            "premarket",
-                            f"alpha_signal_premarket_{today_str}_ko.md",
-                        )
-                        commit_msg_ko = (
-                            f"feat(data): publish premarket signal (KO) {today_str}"
-                        )
-                    else:
-                        out_file_ko = os.path.join(
-                            data_dir, "report", f"alpha_signal_{today_str}_ko.md"
-                        )
-                        commit_msg_ko = (
-                            f"feat(data): publish alpha signal (KO) {today_str}"
-                        )
-
-                    if os.path.exists(out_file_ko):
-                        rel_out_file_ko = os.path.relpath(out_file_ko, project_root)
-                        trigger_git_push(rel_out_file_ko, commit_msg_ko)
-                    else:
-                        logger.warning(
-                            f"Korean report file not found at {out_file_ko}, skipping Git push."
-                        )
+                run_translator(report_type, target_date=today_str)
             except Exception as e:
                 logger.error(f"Translator failed: {e}")
 
-            # Build and push canonical structured JSON report
+            # Build canonical structured JSON report
+            structured_file = None
             try:
                 structured_file = build_structured_report(
                     report_type=report_type,
                     target_date=today_str,
                     data_dir=data_dir,
                 )
-                if structured_file and os.path.exists(structured_file):
-                    rel_struct_file = os.path.relpath(structured_file, project_root)
-                    commit_msg_struct = f"feat(data): publish structured signal JSON ({report_type}) {today_str}"
-                    trigger_git_push(rel_struct_file, commit_msg_struct)
-
-                    # Trigger automated Threads publishing (if enabled)
-                    enable_threads = (
-                        os.getenv("ENABLE_THREADS_POST", "false").lower() == "true"
-                    )
-                    if enable_threads:
-                        try:
-                            from threads_publisher import (
-                                publish_structured_report_to_threads,
-                            )
-
-                            with open(structured_file, "r", encoding="utf-8") as f:
-                                struct_data = json.load(f)
-                            publish_structured_report_to_threads(struct_data)
-                        except Exception as thread_err:
-                            logger.error(
-                                f"Threads automated publishing failed: {thread_err}"
-                            )
             except Exception as struct_err:
                 logger.error(f"Failed to build structured JSON report: {struct_err}")
+
+            # Batch Push Korean report + Structured JSON report together in ONE single atomic commit
+            if report_type == "premarket":
+                out_file_ko = os.path.join(
+                    data_dir,
+                    "premarket",
+                    f"alpha_signal_premarket_{today_str}_ko.md",
+                )
+            else:
+                out_file_ko = os.path.join(
+                    data_dir, "report", f"alpha_signal_{today_str}_ko.md"
+                )
+
+            batch_files = []
+            if os.path.exists(out_file_ko):
+                batch_files.append(os.path.relpath(out_file_ko, project_root))
+            if structured_file and os.path.exists(structured_file):
+                batch_files.append(os.path.relpath(structured_file, project_root))
+
+            if batch_files:
+                if report_type == "premarket":
+                    commit_msg_ko = (
+                        f"feat(data): publish premarket signal (KO) {today_str}"
+                    )
+                else:
+                    commit_msg_ko = (
+                        f"feat(data): publish alpha signal (KO) {today_str}"
+                    )
+                trigger_git_push(batch_files, commit_msg_ko)
+
+            # Trigger automated Threads publishing (if enabled)
+            if structured_file and os.path.exists(structured_file):
+                enable_threads = (
+                    os.getenv("ENABLE_THREADS_POST", "false").lower() == "true"
+                )
+                if enable_threads:
+                    try:
+                        from threads_publisher import (
+                            publish_structured_report_to_threads,
+                        )
+
+                        with open(structured_file, "r", encoding="utf-8") as f:
+                            struct_data = json.load(f)
+                        publish_structured_report_to_threads(struct_data)
+                    except Exception as thread_err:
+                        logger.error(
+                            f"Threads automated publishing failed: {thread_err}"
+                        )
 
             if report_type == "premarket":
                 logger.info(

@@ -141,7 +141,7 @@ def test_run_all_git_push_integration_full(
     def side_effect_exists(path):
         if "as.lock" in path:
             return False
-        if "alpha_signal" in path and "_ko.md" in path:
+        if ("alpha_signal" in path and "_ko.md" in path) or "structured" in path:
             return True
         return False
 
@@ -152,15 +152,15 @@ def test_run_all_git_push_integration_full(
     # Run pipeline
     run_all(report_type="full")
 
-    # Assert trigger_git_push was called twice (once for EN, once for KO)
+    # Assert trigger_git_push was called twice (once for EN, once for KO + Structured)
     assert mock_trigger_git_push.call_count == 2
 
     # Check calls
     calls = mock_trigger_git_push.call_args_list
     assert "alpha_signal_" in calls[0][0][0]
     assert "publish alpha signal (EN)" in calls[0][0][1]
-    assert "alpha_signal_" in calls[1][0][0]
-    assert "_ko.md" in calls[1][0][0]
+    assert any("alpha_signal_" in f and "_ko.md" in f for f in calls[1][0][0])
+    assert any("structured" in f for f in calls[1][0][0])
     assert "publish alpha signal (KO)" in calls[1][0][1]
 
 
@@ -216,6 +216,5 @@ def test_run_all_git_push_integration_premarket(
     calls = mock_trigger_git_push.call_args_list
     assert "alpha_signal_premarket_" in calls[0][0][0]
     assert "publish premarket signal (EN)" in calls[0][0][1]
-    assert "alpha_signal_premarket_" in calls[1][0][0]
-    assert "_ko.md" in calls[1][0][0]
+    assert any("alpha_signal_premarket_" in f and "_ko.md" in f for f in calls[1][0][0])
     assert "publish premarket signal (KO)" in calls[1][0][1]
