@@ -64,7 +64,7 @@ def trigger_git_push(file_path: Union[str, List[str]], commit_msg: str) -> bool:
         git_cwd = data_dir
         git_dir = os.path.join(data_dir, ".git")
         logger.info(
-            f"Target files are inside sub-repository 'data'. Operating git from 'data' directory."
+            "Target files are inside sub-repository 'data'. Operating git from 'data' directory."
         )
     else:
         git_cwd = project_root
@@ -497,9 +497,7 @@ def run_all(report_type: str = "full"):
                         f"feat(data): publish premarket signal (KO) {today_str}"
                     )
                 else:
-                    commit_msg_ko = (
-                        f"feat(data): publish alpha signal (KO) {today_str}"
-                    )
+                    commit_msg_ko = f"feat(data): publish alpha signal (KO) {today_str}"
                 trigger_git_push(batch_files, commit_msg_ko)
 
             # Trigger automated Threads publishing (if enabled)
