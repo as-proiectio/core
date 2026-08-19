@@ -1,9 +1,9 @@
 """
 Threads Content Generator module for Alpha Signals Core.
 
-Uses a single Google AI Studio Gemini API call to synthesize a viral, high-converting
-Threads thread (3-second hook root post + keyword/ticker-centric category replies + dynamic web CTA).
-Includes a deterministic rule-based fallback if the API is unreachable.
+Synthesizes high-engagement, single-topic deep dive narrative Threads (1 root post + 3 chained replies)
+optimized for Korean retail investors before US market open (6 PM ~ 10 PM KST).
+Includes an inline Thread-native CTA and deterministic fallback.
 """
 
 import json
@@ -18,38 +18,46 @@ from shared.shared_logger import setup_logger
 load_env_file()
 logger = setup_logger("logs/threads_generator.log", __name__)
 
-THREADS_SYSTEM_PROMPT = """You are an elite financial journalist and viral social media strategist on Meta Threads.
-Transform the provided market intelligence report into a high-engagement, scannable Threads thread.
+THREADS_SYSTEM_PROMPT = """You are an elite Wall Street financial analyst and viral social media strategist on Meta Threads writing for Korean retail investors before US market open (6 PM ~ 10 PM KST).
+Transform the provided market intelligence report into a high-engagement, single-topic deep dive narrative thread (4 posts total: 1 root post + 3 chained replies).
+
+Target Audience & Mindset:
+- Korean investors preparing for tonight's US stock market open.
+- They want a deep, compelling narrative on the #1 most impactful catalyst/theme from today's data, not a shallow catalog of 10 categories.
 
 Formatting & Tone Rules:
-1. Root Post:
-   - MUST feature an irresistible 3-second hook (curiosity + high user gain / key market catalysts).
-   - Summarize the top 3 market drivers concisely in bullet points.
-   - End with an invitation to read the sector breakdown below (e.g. "👇 지금 시장 주도하는 8대 테마 & 핵심 종목 타래 정리").
-   - DO NOT include external URLs in the root post (avoids reach penalty).
+1. Narrative Structure (Single Theme Deep-Dive, 4 posts total):
+   - Select the SINGLE MOST CRITICAL catalyst/company/theme in today's report (e.g. Big Tech AI chip deal, major macro divergence, breakthrough earnings/SEC filing).
+   - Post 1 (Root Post, 1/4):
+     • 1~4 numbered concise Korean "음슴체" sentences (~임, ~했음, ~함).
+     • Line 1: Provocative 3-second hook (counter-intuitive angle / curiosity gap).
+     • Line 2: Concrete, verified factual catalyst (deal, contract, earnings, SEC filing).
+     • Line 3: Deeper macro/industry reason why this is happening.
+     • Line 4: Thread preview ending with "1/4" (e.g. "오늘 밤 개장 전 알아야 할 핵심 시그널 정리함. 1/4").
+     • DO NOT include URLs in root post (avoids reach penalty).
+   - Post 2 (Reply 1, 2/4 - 맥락 & 배경):
+     • 5~7 numbered sentences. Why Big Tech/institutions are changing behavior and the underlying driver. Ending with "2/4".
+   - Post 3 (Reply 2, 3/4 - 공급망 파급 효과):
+     • 8~10 numbered sentences. Upstream/downstream winners/losers and supply chain shifts. Ending with "3/4".
+   - Post 4 (Reply 3, 4/4 - 오늘 밤 실전 체크포인트 & 인라인 CTA):
+     • 11~12 numbered sentences. What to monitor when the market opens tonight.
+     • Inline 2-line Thread-native CTA:
+       "유익했다면 하트 & 저장 누르고 오늘 밤 장 열릴 때 참고하길.\\n오늘 분석된 {total_articles}개 전체 시그널과 종목별 타임라인은 프로필 링크에서 무료로 확인 가능함. 4/4"
 
-2. Thread Replies (One per category or bundled top categories, max 8-10 replies):
-   - Keep it ultra-scannable for busy mobile users.
-   - Format:
-     (N/10) 🔹 [카테고리명]
-     • 핵심 키워드: [키워드 2-3개]
-     • 핵심 종목: $TICKER(종목명), $TICKER(종목명)
-     • 1줄 핵심: [가장 중요한 팩트 한 문장]
-
-3. Final CTA Reply:
-   - Provide a compelling reason to visit the web app with the exact total articles count provided:
-     "📊 오늘 분석된 {total_articles}개 전체 기사 요약본과 종목별 타임라인 검색은 웹에서 무료로 확인하세요.\n🔗 {report_url}"
-
-4. Hashtag & Topic Restrictions:
-   - NEVER create artificial compound hashtags or micro-topic tags (e.g. #LG엔비디아, #종목합성태그).
-   - Do NOT include unnecessary hashtags in the body. Use ONLY standard ticker symbols with dollar signs (e.g. $NVDA, $AAPL, $TSLA).
-   - Keep the text clean, scannable, and avoid creating obscure Threads topics/communities that harm reach.
+2. Strict Prohibitions:
+   - NO Dollar Ticker Symbols: NEVER write $NVDA, $MRVL, $AAPL, etc. Use 100% natural Korean company names (엔비디아, 마벨 테크놀로지, 애플, 구글, 브로드컴).
+   - NO Price/Quote Hallucination: DO NOT fabricate real-time stock prices or pre-market percentage swings (e.g., "장외 +14% 급등"). Rely ONLY on verified news facts, deal metrics, or SEC filings in the report.
+   - NO Artificial Hashtags: Do not include compound tags like #LG엔비디아.
+   - Tone MUST be concise, authoritative, natural Korean "음슴체" throughout.
 
 Return ONLY valid JSON matching this schema:
 {
-  "root_post": "string",
-  "thread_replies": ["string", "string"],
-  "cta_reply": "string"
+  "root_post": "string (lines 1-4, ending with 1/4)",
+  "thread_replies": [
+    "string (lines 5-7, ending with 2/4)",
+    "string (lines 8-10, ending with 3/4)",
+    "string (lines 11-12 + inline CTA, ending with 4/4)"
+  ]
 }
 """
 
@@ -126,52 +134,51 @@ def generate_fallback_threads(
     date_str: str,
     categories_data: Dict[str, List[Dict[str, Any]]],
     total_articles: int,
-    report_url: str,
+    report_url: str = "https://alphasignals.cloud",
 ) -> Dict[str, Any]:
-    """Deterministic fallback thread generator when LLM is unavailable."""
-    root_post = (
-        f"🚨 [{date_str} 핵심 마켓 시그널]\n\n"
-        f"오늘 총 {total_articles}개 기사를 분석하여 시장을 움직인 주요 섹터 및 핵심 종목을 정리합니다.\n\n"
-        f"👇 시장 주도 섹터 및 핵심 종목 타래 정리 🧵"
+    """Deterministic fallback thread generator in 4-post narrative format."""
+    top_cat = next(iter(categories_data.keys()), "시장 동향")
+    top_arts = categories_data.get(top_cat, [])
+    top_title = (
+        top_arts[0].get("title_ko") or top_arts[0].get("title")
+        if top_arts
+        else "미국 증시 주요 변동성"
+    )
+    second_title = (
+        top_arts[1].get("title_ko") or top_arts[1].get("title")
+        if len(top_arts) > 1
+        else "빅테크 공급망 수급 변화"
     )
 
-    # Replies per category
-    replies = []
-    cat_items = list(categories_data.items())[:10]
-    for idx, (cat_name, articles) in enumerate(cat_items, start=1):
-        # Aggregate unique tickers
-        tickers = []
-        for art in articles:
-            tickers.extend(art.get("tickers", []))
-        tickers_unique = sorted(list(set(tickers)))[:4]
-        ticker_str = (
-            ", ".join([f"${t}" for t in tickers_unique])
-            if tickers_unique
-            else "관련 주요 종목"
-        )
+    root_post = (
+        f"1. 오늘 밤 미국장에서 가장 주목해야 할 핵심 이슈가 있음.\n\n"
+        f"2. {top_title}.\n\n"
+        f"3. 단순 일회성 이슈가 아니라 관련 공급망 전반에 자금이 이동하는 구조적 신호임.\n\n"
+        f"4. 오늘 밤 개장 전 알아야 할 핵심 시그널 정리함. 1/4"
+    )
 
-        top_art = articles[0] if articles else {}
-        top_title = (
-            top_art.get("title_ko") or top_art.get("title") or "섹터 주요 동향 분석"
-        )
+    reply_1 = (
+        f"5. {second_title}.\n\n"
+        f"6. 기관 투자자들과 주요 기업들이 리스크 관리와 포트폴리오 재편에 나서는 배경임.\n\n"
+        f"7. 장 시작 전 글로벌 매크로와 자금 흐름을 선제적으로 읽는 것이 중요함. 2/4"
+    )
 
-        reply_text = (
-            f"({idx}/{len(cat_items)}) 🔹 [{cat_name}]\n"
-            f"• 핵심 종목: {ticker_str}\n"
-            f"• 주요 이슈: {top_title}"
-        )
-        replies.append(reply_text)
+    reply_2 = (
+        "8. 관련 산업군 전반에서 실적과 수주 모멘텀이 있는 핵심 기업들로 차별화 장세가 예상됨.\n\n"
+        "9. 단기 변동성보다는 구조적인 성장성과 수급 방향성에 집중할 필요가 있음.\n\n"
+        "10. 개장 직후 초기 수급 쏠림 현상을 주시해야 함. 3/4"
+    )
 
-    # CTA with dynamic article count
-    cta_reply = (
-        f"📊 오늘 분석된 {total_articles}개 전체 기사 요약본과 종목별 타임라인 검색은 웹에서 무료로 확인하세요.\n"
-        f"🔗 {report_url}"
+    reply_3 = (
+        f"11. 오늘 밤 미국장에서는 주요 지수와 함께 해당 테마 선도 기업들의 거래량을 필수 체크하길.\n\n"
+        f"12. 장중 발표될 경제 지표와 기업 코멘트에 따라 변동성이 확대될 수 있음.\n\n"
+        f"유익했다면 하트 & 저장 누르고 오늘 밤 장 열릴 때 참고하길.\n"
+        f"오늘 분석된 {total_articles}개 전체 시그널과 종목별 타임라인은 프로필 링크에서 무료로 확인 가능함. 4/4"
     )
 
     return {
         "root_post": root_post,
-        "thread_replies": replies,
-        "cta_reply": cta_reply,
+        "thread_replies": [reply_1, reply_2, reply_3],
     }
 
 
@@ -203,27 +210,24 @@ def generate_threads_content(
 
     summary_lines.append("\nTop Categories & Sample Headlines:")
     for cat_name, cat_arts in list(categories_data.items())[:10]:
-        all_tickers = []
         sample_titles = []
         for art in cat_arts[:3]:
-            all_tickers.extend(art.get("tickers", []))
             t = art.get("title_ko") or art.get("title")
+            content = art.get("content_ko") or art.get("content") or ""
             if t:
-                sample_titles.append(t)
-        tickers_str = ", ".join(sorted(list(set(all_tickers)))[:5])
+                snippet = f"{t}: {content[:100]}" if content else t
+                sample_titles.append(snippet)
         summary_lines.append(
-            f"Category [{cat_name}] (Tickers: {tickers_str}):\n"
-            + "\n".join([f"  * {t}" for t in sample_titles])
+            f"Category [{cat_name}]:\n" + "\n".join([f"  * {t}" for t in sample_titles])
         )
 
-    expected_cta = f"📊 오늘 분석된 {total_articles}개 전체 기사 요약본과 종목별 타임라인 검색은 웹에서 무료로 확인하세요.\n🔗 {report_url}"
+    expected_cta = f"유익했다면 하트 & 저장 누르고 오늘 밤 장 열릴 때 참고하길.\n오늘 분석된 {total_articles}개 전체 시그널과 종목별 타임라인은 프로필 링크에서 무료로 확인 가능함. 4/4"
 
     user_prompt = (
-        "Generate a Threads thread based on this market report:\n\n"
+        "Generate a 4-post narrative Threads thread for Korean investors preparing for tonight's US market open based on this market report:\n\n"
         + "\n".join(summary_lines)
         + f"\n\nTotal Articles: {total_articles}"
-        + f"\nReport URL: {report_url}"
-        + f"\nExpected CTA text format: {expected_cta}"
+        + f"\nRequired Inline CTA for Post 4:\n{expected_cta}"
     )
 
     try:
@@ -232,9 +236,19 @@ def generate_threads_content(
             isinstance(content, dict)
             and "root_post" in content
             and "thread_replies" in content
+            and len(content["thread_replies"]) >= 1
         ):
-            # Ensure CTA uses dynamic total articles and correct URL
-            content["cta_reply"] = expected_cta
+            # Ensure inline CTA is present in the final reply
+            last_reply = content["thread_replies"][-1]
+            if (
+                f"{total_articles}개" not in last_reply
+                and "프로필 링크" not in last_reply
+            ):
+                content["thread_replies"][-1] = (
+                    f"{last_reply}\n\n"
+                    f"유익했다면 하트 & 저장 누르고 오늘 밤 장 열릴 때 참고하길.\n"
+                    f"오늘 분석된 {total_articles}개 전체 시그널과 종목별 타임라인은 프로필 링크에서 무료로 확인 가능함. 4/4"
+                )
             logger.info("Successfully generated Threads content via Gemini API.")
             return content
     except Exception as e:

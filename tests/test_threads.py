@@ -23,20 +23,23 @@ def test_fallback_threads_generation():
     res = generate_fallback_threads(date_str, categories_data, 249, report_url)
 
     assert "root_post" in res
-    assert "2026-08-14" in res["root_post"]
-    assert len(res["thread_replies"]) == 1
-    assert "$NVDA" in res["thread_replies"][0]
-    assert "cta_reply" in res
-    assert "249개" in res["cta_reply"]
-    assert report_url in res["cta_reply"]
+    assert "1/4" in res["root_post"]
+    assert len(res["thread_replies"]) == 3
+    assert "2/4" in res["thread_replies"][0]
+    assert "3/4" in res["thread_replies"][1]
+    assert "249개" in res["thread_replies"][2]
+    assert "4/4" in res["thread_replies"][2]
 
 
 @patch("src.threads_generator.call_gemini_for_threads")
 def test_generate_threads_content_with_gemini(mock_gemini):
     mock_gemini.return_value = {
-        "root_post": "🚨 엔비디아 실적 발표 전야 3줄 요약",
-        "thread_replies": ["(1/10) 🔹 [반도체] $NVDA"],
-        "cta_reply": "웹에서 확인하세요: https://alphasignals.cloud",
+        "root_post": "1. 오늘 밤 미국장에서 제일 주목해야 할 이슈가 있음. 1/4",
+        "thread_replies": [
+            "5. 빅테크들이 자체 칩으로 돌아서는 속도가 훨씬 빠름. 2/4",
+            "8. 공급망 전반에서 수혜 기업들로 차별화 장세가 예상됨. 3/4",
+            "11. 오늘 밤 주요 지수와 거래량을 필수 체크하길. 4/4",
+        ],
     }
 
     structured_data = {
@@ -52,17 +55,16 @@ def test_generate_threads_content_with_gemini(mock_gemini):
     }
 
     res = generate_threads_content(structured_data, api_key="dummy_key")
-    assert res["root_post"] == "🚨 엔비디아 실적 발표 전야 3줄 요약"
-    assert len(res["thread_replies"]) == 1
-    assert "249개" in res["cta_reply"]
+    assert "1/4" in res["root_post"]
+    assert len(res["thread_replies"]) == 3
+    assert "249개" in res["thread_replies"][2]
 
 
 def test_threads_publisher_dry_run():
     publisher = ThreadsPublisher(dry_run=True)
     thread_data = {
         "root_post": "Root post text",
-        "thread_replies": ["Reply 1 text", "Reply 2 text"],
-        "cta_reply": "CTA link text",
+        "thread_replies": ["Reply 1 text", "Reply 2 text", "Reply 3 with CTA"],
     }
 
     published_ids = publisher.publish_thread(thread_data)
@@ -83,9 +85,8 @@ def test_threads_publisher_live_mock(mock_post):
         )
         thread_data = {
             "root_post": "Root post",
-            "thread_replies": ["Reply 1"],
-            "cta_reply": "CTA post",
+            "thread_replies": ["Reply 1", "Reply 2", "Reply 3 with CTA"],
         }
         published_ids = publisher.publish_thread(thread_data)
-        assert len(published_ids) == 3
-        assert published_ids == ["123456789", "123456789", "123456789"]
+        assert len(published_ids) == 4
+        assert published_ids == ["123456789", "123456789", "123456789", "123456789"]
