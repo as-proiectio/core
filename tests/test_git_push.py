@@ -114,6 +114,7 @@ def test_trigger_git_push_subprocess_error_logging(mock_logger, mock_run, mock_e
 @patch("src.run_cio")
 @patch("src.run_formatter")
 @patch("src.run_translator")
+@patch("src.build_structured_report")
 @patch("src.trigger_git_push")
 @patch("src.os.path.exists")
 @patch("src.os.remove")
@@ -124,6 +125,7 @@ def test_run_all_git_push_integration_full(
     mock_remove,
     mock_exists,
     mock_trigger_git_push,
+    mock_build_structured,
     mock_translator,
     mock_formatter,
     mock_cio,
@@ -134,6 +136,13 @@ def test_run_all_git_push_integration_full(
 ):
     # Setup mocks
     mock_is_trading_day.return_value = True
+    mock_formatter.return_value = True
+    mock_build_structured.return_value = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "data",
+        "structured",
+        "signal_20260717.json",
+    )
 
     # We want os.path.exists to return:
     # False for as.lock
