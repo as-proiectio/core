@@ -12,17 +12,17 @@
 
     <key>StartCalendarInterval</key>
     <array>
-        <!-- NY 00:00 (EDT Local Time -> Sydney 14:00) -->
+        <!-- NY 00:00 (EDT Local Time -> Manado 12:00) -->
         <dict>
             <key>Hour</key>
-            <integer>14</integer>
+            <integer>12</integer>
             <key>Minute</key>
             <integer>2</integer>
         </dict>
-        <!-- NY 04:00 (EDT Local Time -> Sydney 18:00) -->
+        <!-- NY 04:00 (EDT Local Time -> Manado 16:00) -->
         <dict>
             <key>Hour</key>
-            <integer>18</integer>
+            <integer>16</integer>
             <key>Minute</key>
             <integer>4</integer>
         </dict>

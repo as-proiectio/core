@@ -12,9 +12,9 @@
 
     <key>StartCalendarInterval</key>
     <dict>
-        <!-- NY 06:00 (EDT Local Time -> Sydney 20:00) -->
+        <!-- NY 06:00 (EDT Local Time -> Manado 18:00) -->
         <key>Hour</key>
-        <integer>20</integer>
+        <integer>18</integer>
         <key>Minute</key>
         <integer>5</integer>
     </dict>
