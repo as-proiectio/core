@@ -167,7 +167,7 @@ def is_us_trading_day(dt: datetime | None = None) -> bool:
     if us_now.weekday() >= 5:
         return False
 
-    nyse_holidays = holidays.financial_holidays("US", years=us_now.year)
+    nyse_holidays = holidays.financial_holidays("NYSE", years=us_now.year)
     if us_now in nyse_holidays:
         return False
 
